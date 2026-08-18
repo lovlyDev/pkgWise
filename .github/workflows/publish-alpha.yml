@@ -1,15 +1,24 @@
-name: Publish alpha
+name: Publish npm release
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
-        description: Exact synchronized alpha version to publish
+        description: Exact synchronized version to publish
         required: true
         type: string
+      npm_tag:
+        description: npm dist-tag
+        required: true
+        type: choice
+        options:
+          - next
+          - latest
 
 concurrency:
-  group: publish-alpha
+  group: publish-npm
   cancel-in-progress: false
 
 permissions:
@@ -22,6 +31,8 @@ jobs:
     environment: npm
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
       - uses: pnpm/action-setup@v6
         with:
           version: 11.19.0
@@ -32,16 +43,63 @@ jobs:
           cache: pnpm
       - run: npm install --global npm@11.16.0
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Resolve release version and npm tag
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          MANUAL_VERSION: ${{ inputs.version }}
+          MANUAL_NPM_TAG: ${{ inputs.npm_tag }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
+            if [[ "$RELEASE_TAG" != v* ]]; then
+              echo "GitHub Release tag must start with v (for example, v1.0.0)." >&2
+              exit 1
+            fi
+            version="${RELEASE_TAG#v}"
+            if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+              npm_tag="next"
+            else
+              npm_tag="latest"
+            fi
+          else
+            version="$MANUAL_VERSION"
+            npm_tag="$MANUAL_NPM_TAG"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "npm_tag=$npm_tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $version with npm tag $npm_tag"
       - name: Validate requested version
-        run: pnpm release:version ${{ inputs.version }}
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          NPM_TAG: ${{ steps.release.outputs.npm_tag }}
+        run: pnpm release:version "$RELEASE_VERSION" "$NPM_TAG"
       - run: pnpm release:check
       - uses: actions/upload-artifact@v7
         with:
-          name: npm-tarballs-${{ inputs.version }}
+          name: npm-tarballs-${{ steps.release.outputs.version }}
           path: .artifacts/*.tgz
           if-no-files-found: error
           include-hidden-files: true
       - name: Publish core
-        run: npm publish .artifacts/lovlydev-pkgwise-core-*.tgz --tag next --access public --provenance
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          NPM_TAG: ${{ steps.release.outputs.npm_tag }}
+        run: |
+          if npm view "@lovlydev/pkgwise-core@$RELEASE_VERSION" version >/dev/null 2>&1; then
+            echo "@lovlydev/pkgwise-core@$RELEASE_VERSION is already published; skipping."
+          else
+            npm publish .artifacts/lovlydev-pkgwise-core-*.tgz --tag "$NPM_TAG" --access public --provenance
+          fi
       - name: Publish CLI
-        run: npm publish .artifacts/pkgwise-[0-9]*.tgz --tag next --access public --provenance
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          NPM_TAG: ${{ steps.release.outputs.npm_tag }}
+        run: |
+          if npm view "pkgwise@$RELEASE_VERSION" version >/dev/null 2>&1; then
+            echo "pkgwise@$RELEASE_VERSION is already published; skipping."
+          else
+            npm publish .artifacts/pkgwise-[0-9]*.tgz --tag "$NPM_TAG" --access public --provenance
+          fi

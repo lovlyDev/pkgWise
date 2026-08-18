@@ -4,9 +4,23 @@ import { fileURLToPath } from 'node:url';
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const expected = process.argv[2];
+const npmTag = process.argv[3];
+const semanticVersion =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*))*))?$/;
 
-if (expected === undefined || !/^\d+\.\d+\.\d+-alpha\.\d+$/.test(expected)) {
-  throw new Error('Expected an explicit alpha version such as 0.1.0-alpha.0.');
+if (expected === undefined || !semanticVersion.test(expected)) {
+  throw new Error('Expected an explicit semantic version such as 0.2.0-alpha.1 or 1.0.0.');
+}
+
+if (npmTag !== 'next' && npmTag !== 'latest') {
+  throw new Error('Expected the npm dist-tag to be either next or latest.');
+}
+
+const isPrerelease = expected.includes('-');
+if ((isPrerelease && npmTag !== 'next') || (!isPrerelease && npmTag !== 'latest')) {
+  throw new Error(
+    `Version ${expected} must be published with the ${isPrerelease ? 'next' : 'latest'} npm dist-tag.`,
+  );
 }
 
 const manifests = await Promise.all(
@@ -25,4 +39,6 @@ if (mismatches.length > 0) {
   );
 }
 
-process.stdout.write(`Release version ${expected} is synchronized and alpha-tagged.\n`);
+process.stdout.write(
+  `Release version ${expected} is synchronized and will use npm tag ${npmTag}.\n`,
+);

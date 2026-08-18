@@ -1,4 +1,4 @@
-# Alpha release guide
+# Release guide
 
 ## Current readiness
 
@@ -30,14 +30,20 @@ published license files. It must pass before packaging or publishing.
 
 ## Version and tag
 
-Both packages remain version-locked through the alpha. User-visible changes require a Changeset.
-Prereleases are published with the npm dist-tag `next`; `latest` must not point to an alpha.
+Both packages remain version-locked. User-visible changes require a Changeset. Prereleases are published
+with the npm dist-tag `next`; stable releases are published with `latest`.
 
-The manual `Publish alpha` GitHub workflow runs the full release check, then publishes
-`@lovlydev/pkgwise-core` before `pkgwise` with public access and npm provenance. It is manual by design until
-the repository, npm scope, and Trusted Publisher ownership have been verified. The operator must enter
-the exact synchronized alpha version; the workflow rejects a mismatched or non-alpha version, prevents
-parallel publish runs, and preserves the verified tarballs as a workflow artifact.
+Publishing a GitHub Release automatically runs `.github/workflows/publish-alpha.yml`. The workflow checks
+out the release tag, verifies that both package manifests have the same version as the tag, runs the full
+release check, publishes `@lovlydev/pkgwise-core` before `pkgwise`, and preserves the verified tarballs as
+a workflow artifact. A GitHub prerelease is sent to npm with `next`; a normal GitHub release is sent with
+`latest`. npm authenticates the workflow through OIDC Trusted Publishing, so no long-lived npm token is
+stored in GitHub.
+
+Before publishing the GitHub Release, commit and push the synchronized package versions and create a tag
+named `v<version>` on that commit. For example, package version `0.2.0-alpha.1` must use tag
+`v0.2.0-alpha.1` and the GitHub Release must be marked as a prerelease. If automatic publishing needs to
+be retried, run `Publish npm release` manually with the exact version and matching `next` or `latest` tag.
 
 ## First-publish checks
 
@@ -45,7 +51,7 @@ parallel publish runs, and preserves the verified tarballs as a workflow artifac
 - confirm package names immediately before publishing;
 - inspect `.artifacts/*.tgz` from CI;
 - publish the first versions manually with 2FA, core before CLI;
-- configure Trusted Publishing for both packages, then use the manual workflow for later versions;
+- configure Trusted Publishing for both packages and the GitHub `npm` environment;
 - verify `npm view pkgwise dist-tags --json` and `npm view @lovlydev/pkgwise-core dist-tags --json`;
 - install `pkgwise@next` in a clean directory and run `pkgwise --version`, `pkgwise doctor`, and a scan;
 - record known alpha limitations in the GitHub release.
