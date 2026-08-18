@@ -16,7 +16,7 @@ export interface CreatePkgWiseOptions {
 
 export function createPkgWise(options: CreatePkgWiseOptions = {}): PkgWiseClient {
   const context = {
-    toolVersion: options.version ?? '0.1.0-alpha.1',
+    toolVersion: options.version ?? '0.1.0-alpha.2',
     now: options.now ?? (() => new Date()),
     fetch: options.fetch ?? globalThis.fetch,
     ...(options.sleep === undefined ? {} : { sleep: options.sleep }),

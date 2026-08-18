@@ -16,6 +16,9 @@ on the stable version.
 The `0.1.0-alpha.1` release adds explainable scoring and is the first release published automatically
 from a GitHub prerelease through OIDC Trusted Publishing.
 
+The `0.1.0-alpha.2` release adds project-wide npm Registry intelligence, maintenance and supply-chain
+findings, and numeric evidence-backed results across all six scoring categories during remote scans.
+
 ## Local release verification
 
 ```bash

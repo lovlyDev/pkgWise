@@ -1,5 +1,10 @@
 # PkgWise changelog
 
+## 0.1.0-alpha.2
+
+- Added npm Registry coverage and metadata provenance to terminal, JSON, Markdown, and SARIF scan output.
+- Added six-category remote project scoring plus deprecation and install-script findings to `scan --remote`.
+
 ## 0.1.0-alpha.1
 
 - Added explainable scores to terminal, JSON, Markdown, and SARIF scan reports.

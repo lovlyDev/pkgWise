@@ -1,6 +1,6 @@
 {
   "name": "pkgwise",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Explainable dependency analysis for JavaScript and TypeScript projects",
   "keywords": ["dependencies", "security", "npm", "osv", "audit", "cli"],
   "type": "module",

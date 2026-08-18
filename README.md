@@ -55,7 +55,7 @@ PkgWise never executes code from the project it analyzes. The core package does 
 
 ## Alpha release status
 
-`pkgwise@0.1.0-alpha.1` and `@lovlydev/pkgwise-core@0.1.0-alpha.1` are the current npm prereleases. The release
+`pkgwise@0.1.0-alpha.2` and `@lovlydev/pkgwise-core@0.1.0-alpha.2` are the current npm prereleases. The release
 pipeline includes linting, Changesets, cross-platform CI, deterministic package allowlists, tarball
 install/bin smoke tests, MIT licensing, and OIDC Trusted Publishing for future releases. See the
 [alpha release guide](docs/release.md).
