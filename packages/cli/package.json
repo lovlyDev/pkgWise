@@ -1,0 +1,48 @@
+{
+  "name": "pkgwise",
+  "version": "0.1.0-alpha.0",
+  "description": "Explainable dependency analysis for JavaScript and TypeScript projects",
+  "keywords": ["dependencies", "security", "npm", "osv", "audit", "cli"],
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lovlyDev/pkgWise.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/lovlyDev/pkgWise#readme",
+  "bugs": {
+    "url": "https://github.com/lovlyDev/pkgWise/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "bin": {
+    "pkgwise": "./dist/bin/pkgwise.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "prepack": "pnpm build",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.build.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "node ../../node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-dist/test/**/*.test.js"
+  },
+  "dependencies": {
+    "@pkgwise/core": "workspace:*",
+    "commander": "^14.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

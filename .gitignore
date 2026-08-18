@@ -1,0 +1,21 @@
+node_modules/
+.pnpm-store/
+dist/
+.test-dist/
+coverage/
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.pkgwise-cache/
+.artifacts/
+*.tmp
+
+# Local product specifications and working documents are intentionally not published.
+TECHNICAL_SPECIFICATION.md
+docs/spec/
+.agents/
+.codex/
