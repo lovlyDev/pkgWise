@@ -2,17 +2,14 @@
 
 ## Current readiness
 
-The functional CLI and public core API are implemented and tested. The canonical public repository is
-`https://github.com/lovlyDev/pkgWise`. MIT licensing, author metadata, the `lovlydev` npm account, and
-the personal `@lovlydev` scope are configured. Before automated releases:
+The functional CLI and public core API are implemented, tested, and published. The canonical public
+repository is `https://github.com/lovlyDev/pkgWise`. MIT licensing, author metadata, the `lovlydev` npm
+account, personal scope, GitHub `npm` environment, and OIDC Trusted Publishing are configured.
 
-1. publish both packages once with the authenticated npm account;
-2. protect the GitHub `main` branch;
-3. create the GitHub `npm` environment;
-4. configure npm Trusted Publishing for both packages with the `publish-alpha.yml` workflow.
-
-Registry checks on 2026-08-18 returned 404 for both `pkgwise` and `@lovlydev/pkgwise-core`, so they appeared
-unpublished at that moment. Availability is not reserved until the first successful publish.
+The first public versions were published on 2026-08-18 as `pkgwise@0.1.0-alpha.0` and
+`@lovlydev/pkgwise-core@0.1.0-alpha.0`. npm assigns `latest` to a package's first release even when
+`--tag next` is supplied, so both `latest` and `next` initially identify this alpha. The first stable
+release must move `latest` to the stable version.
 
 ## Local release verification
 
