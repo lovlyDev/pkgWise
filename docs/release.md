@@ -11,6 +11,9 @@ The first public versions were published on 2026-08-18 as `pkgwise@0.1.0-alpha.0
 `--tag next` is supplied, so both `latest` and `next` initially identify this alpha. The first stable
 release must move `latest` to the stable version.
 
+The `0.1.0-alpha.1` release adds explainable scoring and is the first release published automatically
+from a GitHub prerelease through OIDC Trusted Publishing.
+
 ## Local release verification
 
 ```bash
