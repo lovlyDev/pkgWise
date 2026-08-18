@@ -14,6 +14,15 @@ const maximumConfigBytes = 1024 * 1024;
 const severities = ['critical', 'high', 'medium', 'low', 'info'] as const;
 const evidenceKinds = ['confirmed-fact', 'heuristic', 'potential-risk'] as const;
 const scopes = ['runtime', 'development', 'peer', 'optional'] as const;
+const scoreTargets = [
+  'overall',
+  'security',
+  'maintenance',
+  'supply-chain',
+  'reliability',
+  'compatibility',
+  'quality',
+] as const;
 const policyRuleIds = [...localRuleIds, 'security/osv-vulnerability'] as const;
 
 export async function loadPkgWiseConfig(
@@ -86,19 +95,52 @@ async function readConfigFile(path: string, signal?: AbortSignal): Promise<unkno
 function validateConfig(value: unknown): PkgWiseConfigV1 {
   const issues: string[] = [];
   if (!isRecord(value)) throw configError(['/: expected an object']);
-  rejectUnknownKeys(value, ['schemaVersion', 'project', 'rules', 'policy'], '', issues);
+  rejectUnknownKeys(value, ['schemaVersion', 'project', 'rules', 'scoring', 'policy'], '', issues);
   if (value.schemaVersion !== 1) issues.push('/schemaVersion: expected the number 1');
 
   const project = validateProject(value.project, issues);
   const rules = validateRules(value.rules, issues);
+  const scoring = validateScoring(value.scoring, issues);
   const policy = validatePolicy(value.policy, issues);
   if (issues.length > 0) throw configError(issues);
   return {
     schemaVersion: 1,
     ...(project === undefined ? {} : { project }),
     ...(rules === undefined ? {} : { rules }),
+    ...(scoring === undefined ? {} : { scoring }),
     ...(policy === undefined ? {} : { policy }),
   };
+}
+
+function validateScoring(value: unknown, issues: string[]): PkgWiseConfigV1['scoring'] | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    issues.push('/scoring: expected an object');
+    return undefined;
+  }
+  rejectUnknownKeys(value, ['categoryWeights'], '/scoring', issues);
+  if (value.categoryWeights === undefined) return {};
+  if (!isRecord(value.categoryWeights)) {
+    issues.push('/scoring/categoryWeights: expected an object');
+    return {};
+  }
+  rejectUnknownKeys(
+    value.categoryWeights,
+    scoreTargets.filter((target) => target !== 'overall'),
+    '/scoring/categoryWeights',
+    issues,
+  );
+  const categoryWeights: Record<string, number> = Object.create(null) as Record<string, number>;
+  for (const [category, weight] of Object.entries(value.categoryWeights)) {
+    if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0 || weight > 1) {
+      issues.push(
+        `/scoring/categoryWeights/${escapePointer(category)}: expected a finite number from 0 to 1`,
+      );
+    } else {
+      categoryWeights[category] = weight;
+    }
+  }
+  return { categoryWeights };
 }
 
 function validateProject(value: unknown, issues: string[]): PkgWiseConfigV1['project'] | undefined {
@@ -202,8 +244,40 @@ function validateCondition(
     const below = validateUnitInterval(value.below, `${pointer}/below`, issues);
     return below === undefined ? undefined : { type: 'coverage', below };
   }
+  if (value.type === 'score') {
+    rejectUnknownKeys(
+      value,
+      ['type', 'target', 'below', 'minimumCoverage', 'minimumConfidence'],
+      pointer,
+      issues,
+    );
+    if (!(scoreTargets as readonly unknown[]).includes(value.target)) {
+      issues.push(`${pointer}/target: expected ${scoreTargets.join(', ')}`);
+    }
+    const below = validateScore(value.below, `${pointer}/below`, issues);
+    const minimumCoverage = validateUnitInterval(
+      value.minimumCoverage,
+      `${pointer}/minimumCoverage`,
+      issues,
+    );
+    const minimumConfidence = validateUnitInterval(
+      value.minimumConfidence,
+      `${pointer}/minimumConfidence`,
+      issues,
+    );
+    if (!(scoreTargets as readonly unknown[]).includes(value.target) || below === undefined) {
+      return undefined;
+    }
+    return {
+      type: 'score',
+      target: value.target as (typeof scoreTargets)[number],
+      below,
+      ...(minimumCoverage === undefined ? {} : { minimumCoverage }),
+      ...(minimumConfidence === undefined ? {} : { minimumConfidence }),
+    };
+  }
   if (value.type !== 'finding') {
-    issues.push(`${pointer}/type: expected "finding" or "coverage"`);
+    issues.push(`${pointer}/type: expected "finding", "coverage", or "score"`);
     return undefined;
   }
   rejectUnknownKeys(
@@ -264,6 +338,14 @@ function validateCondition(
     ...(configuredScopes === undefined ? {} : { scopes: configuredScopes }),
     ...(typeof value.directOnly === 'boolean' ? { directOnly: value.directOnly } : {}),
   };
+}
+
+function validateScore(value: unknown, pointer: string, issues: string[]): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+    issues.push(`${pointer}: expected a finite number from 0 to 100`);
+    return undefined;
+  }
+  return value;
 }
 
 function validateStringEnumArray<T extends string>(

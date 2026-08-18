@@ -28,7 +28,8 @@ export function renderAnalysisReport(
     `Topology: ${report.graph.duplicateVersionGroupCount} duplicate-version groups · ${report.graph.cycleCount} cycles`,
     `  runtime ${report.graph.dependencyCounts.runtime} · development ${report.graph.dependencyCounts.development} · peer ${report.graph.dependencyCounts.peer} · optional ${report.graph.dependencyCounts.optional}`,
     '',
-    `Analysis status: ${report.status} · scores unavailable · coverage ${Math.round(report.coverage.overall * 100)}%`,
+    `Analysis status: ${report.status}`,
+    ...renderScoreLines(report),
     `Security: OSV ${report.enrichment.osv.status} · ${report.enrichment.osv.evaluatedCoordinateCount}/${report.enrichment.osv.eligibleCoordinateCount} coordinates · ${report.advisories.length} advisories${report.coverage.security === undefined ? '' : ` · ${Math.round(report.coverage.security * 100)}% coverage`}`,
     `Configuration: ${report.configuration.source}${report.configuration.relativePath === undefined ? '' : ` (${report.configuration.relativePath})`} · ${report.configuration.enabledRules.length} rules`,
     `Policy: ${report.policy.status}${report.policy.configured ? ` · ${report.policy.violations.length} violations` : ' · not configured'}`,
@@ -64,6 +65,33 @@ export function renderAnalysisReport(
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function renderScoreLines(report: AnalysisReport): string[] {
+  const headline =
+    report.scores.overall === undefined
+      ? `Scores: insufficient data · coverage ${formatPercent(report.scores.coverage)} · confidence ${formatPercent(report.scores.confidence)}`
+      : `Scores: ${formatScore(report.scores.overall)}/100${report.scores.label === undefined ? ' · label withheld' : ` · ${report.scores.label.replaceAll('-', ' ')}`} · coverage ${formatPercent(report.scores.coverage)} · confidence ${formatPercent(report.scores.confidence)} · model ${report.scores.modelVersion}`;
+  const lines = [headline];
+  for (const category of report.scores.categories) {
+    lines.push(
+      `  ${category.category}: ${category.score === undefined ? category.status : `${formatScore(category.score)}/100`} · coverage ${formatPercent(category.coverage)} · confidence ${formatPercent(category.confidence)}`,
+    );
+    for (const contribution of category.contributions) {
+      lines.push(
+        `    ${contribution.ruleId}: ${formatScore(contribution.value)}/100 — ${contribution.explanation}`,
+      );
+    }
+  }
+  return lines;
+}
+
+function formatScore(value: number): string {
+  return value.toFixed(2).replace(/\.00$/, '');
+}
+
+function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }
 
 function filterFindings(

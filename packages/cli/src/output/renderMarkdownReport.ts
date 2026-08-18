@@ -33,6 +33,21 @@ export function renderMarkdownReport(report: AnalysisReport): string {
     `| Cycles | ${report.graph.cycleCount} |`,
     `| Analysis coverage | ${Math.round(report.coverage.overall * 100)}% |`,
     '',
+    '## Scores',
+    '',
+    `Model: ${escapeMarkdown(report.scores.modelVersion)}. Overall: ${report.scores.overall === undefined ? 'insufficient data' : `**${report.scores.overall.toFixed(2)}/100**`}. Coverage: ${Math.round(report.scores.coverage * 100)}%. Confidence: ${Math.round(report.scores.confidence * 100)}%.${report.scores.label === undefined ? ' The qualitative label is withheld until coverage and confidence are sufficient.' : ` Label: **${escapeMarkdown(report.scores.label)}**.`}`,
+    '',
+    '| Category | Status | Score | Coverage | Confidence |',
+    '| --- | --- | ---: | ---: | ---: |',
+    ...report.scores.categories.map(
+      (category) =>
+        `| ${escapeMarkdown(category.category)} | ${escapeMarkdown(category.status)} | ${category.score === undefined ? '—' : category.score.toFixed(2)} | ${Math.round(category.coverage * 100)}% | ${Math.round(category.confidence * 100)}% |`,
+    ),
+    '',
+    '### Score contributions',
+    '',
+    ...renderScoreContributions(report),
+    '',
     '## Security enrichment',
     '',
     '| Metric | Value |',
@@ -80,6 +95,15 @@ export function renderMarkdownReport(report: AnalysisReport): string {
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+function renderScoreContributions(report: AnalysisReport): string[] {
+  const contributions = report.scores.categories.flatMap((category) => category.contributions);
+  if (contributions.length === 0) return ['No score contribution had sufficient evidence.'];
+  return contributions.map(
+    (contribution) =>
+      `- **${escapeMarkdown(contribution.category)} / ${escapeMarkdown(contribution.ruleId)}:** ${contribution.value.toFixed(2)}/100 (weight ${contribution.weight.toFixed(2)}, confidence ${Math.round(contribution.confidence * 100)}%) — ${escapeMarkdown(contribution.explanation)}`,
+  );
 }
 
 export function renderGenericMarkdown(value: unknown, title = 'PkgWise result'): string {

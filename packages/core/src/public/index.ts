@@ -31,6 +31,10 @@ export type {
   SecurityAdvisory,
   ProjectSecurityAdvisory,
   PolicyDecisionSummary,
+  ProjectScores,
+  CategoryScore,
+  ScoreCategory,
+  ScoreContribution,
   UnresolvedDependencyRelation,
 } from './ClientResults.js';
 export type { CreatePkgWiseOptions } from './createPkgWise.js';
@@ -41,6 +45,7 @@ export type {
   FindingPolicyCondition,
   LoadedPkgWiseConfig,
   PkgWiseConfigV1,
+  ScorePolicyCondition,
   SupportedPolicyCondition,
 } from './PkgWiseConfig.js';
 export { createPkgWise } from './createPkgWise.js';

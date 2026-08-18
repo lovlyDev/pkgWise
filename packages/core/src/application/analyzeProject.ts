@@ -14,6 +14,8 @@ import type { AnalysisReport, Finding, PackageReport } from '../public/ClientRes
 import { defaultLocalRuleIds, localRuleIds, runLocalRules } from '../rules/runLocalRules.js';
 import { fetchProjectOsv } from '../providers/osv/fetchProjectOsv.js';
 import { compareFindings, createSecurityFindings } from '../rules/createSecurityFindings.js';
+import { calculateProjectScores } from '../scoring/calculateProjectScores.js';
+import type { ProjectOsvResult } from '../providers/osv/fetchProjectOsv.js';
 
 export interface AnalyzeProjectContext {
   readonly toolVersion: string;
@@ -100,11 +102,26 @@ export async function analyzeProject(
         ? 1
         : osv.evaluatedCoordinateCount / osv.eligibleCoordinateCount
       : undefined;
+  const scores = calculateProjectScores({
+    ...(graphAnalysis === undefined ? {} : { graph: graphAnalysis }),
+    packages,
+    findings,
+    ...(input.remote === true ? { osv: osv as ProjectOsvResult } : {}),
+    ...(loadedConfig.config.scoring?.categoryWeights === undefined
+      ? {}
+      : { categoryWeights: loadedConfig.config.scoring.categoryWeights }),
+  });
   const coverage = {
-    overall: 0,
+    overall: scores.coverage,
     ...(securityCoverage === undefined ? {} : { security: securityCoverage }),
   };
-  const policy = evaluatePolicy(loadedConfig.config.policy, findings, packages, coverage.overall);
+  const policy = evaluatePolicy(
+    loadedConfig.config.policy,
+    findings,
+    packages,
+    coverage.overall,
+    scores,
+  );
 
   return {
     schemaVersion: '1',
@@ -145,7 +162,7 @@ export async function analyzeProject(
     },
     packages,
     findings,
-    scores: { status: 'unavailable' },
+    scores,
     coverage,
     advisories: osv.advisories,
     enrichment: {
@@ -187,12 +204,12 @@ export async function analyzeProject(
           ]
         : [
             {
-              code: 'PW_ANALYSIS_GRAPH_READY_RULES_PENDING',
+              code: 'PW_ANALYSIS_GRAPH_AND_SCORING_READY',
               level: 'warning' as const,
               message:
                 input.remote === true
-                  ? `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages and ran local topology and OSV security rules; scoring is not implemented yet.`
-                  : `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages and ran local topology rules; remote security enrichment is opt-in and scoring is not implemented yet.`,
+                  ? `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages and calculated evidence-backed scores with OSV security data.`
+                  : `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages and calculated local reliability and compatibility scores; remote security enrichment is opt-in.`,
             },
           ]),
       ...(input.remote === true && osv.status !== 'available'

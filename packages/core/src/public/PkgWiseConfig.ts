@@ -1,4 +1,4 @@
-import type { FindingSeverity } from './ClientResults.js';
+import type { FindingSeverity, ScoreCategory } from './ClientResults.js';
 
 export type ConfiguredEvidenceKind = 'confirmed-fact' | 'heuristic' | 'potential-risk';
 export type ConfiguredDependencyScope = 'runtime' | 'development' | 'peer' | 'optional';
@@ -19,7 +19,16 @@ export interface CoveragePolicyCondition {
   readonly below: number;
 }
 
-export type SupportedPolicyCondition = FindingPolicyCondition | CoveragePolicyCondition;
+export interface ScorePolicyCondition {
+  readonly type: 'score';
+  readonly target: 'overall' | ScoreCategory;
+  readonly below: number;
+  readonly minimumCoverage?: number;
+  readonly minimumConfidence?: number;
+}
+
+export type SupportedPolicyCondition =
+  FindingPolicyCondition | CoveragePolicyCondition | ScorePolicyCondition;
 
 export interface PkgWiseConfigV1 {
   readonly schemaVersion: 1;
@@ -30,6 +39,9 @@ export interface PkgWiseConfigV1 {
       false | { readonly enabled?: boolean; readonly options?: Readonly<Record<string, unknown>> }
     >
   >;
+  readonly scoring?: {
+    readonly categoryWeights?: Partial<Readonly<Record<ScoreCategory, number>>>;
+  };
   readonly policy?: {
     readonly fail?: readonly SupportedPolicyCondition[];
     readonly minimumOverallCoverage?: number;

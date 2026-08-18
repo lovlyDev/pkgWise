@@ -14,4 +14,8 @@ inspection uses the public npm Registry and OSV API. `scan --remote` queries OSV
 package coordinate in the lockfile. Both paths support an owned checksum-validated cache and can be
 run without network access after data has been cached.
 
+Scan reports include evidence-backed category scores, overall coverage and confidence, contribution
+explanations, and score-aware policy conditions. Missing provider data is excluded rather than scored as
+zero.
+
 Node.js 22 or newer is required. This package is an alpha: report and API contracts may still evolve.

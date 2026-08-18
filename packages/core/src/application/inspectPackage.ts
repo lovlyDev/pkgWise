@@ -11,6 +11,7 @@ import { fetchOsvAdvisories } from '../providers/osv/fetchOsvAdvisories.js';
 import { analyzeProject, type AnalyzeProjectContext } from './analyzeProject.js';
 import { selectInstalledPackages } from './packageSelection.js';
 import { compareFindings, createSecurityFindings } from '../rules/createSecurityFindings.js';
+import { calculateProjectScores } from '../scoring/calculateProjectScores.js';
 
 export async function inspectPackage(
   input: InspectPackageInput,
@@ -177,7 +178,7 @@ function createRemoteOnlyReport(context: AnalyzeProjectContext): AnalysisReport 
     },
     packages: [],
     findings: [],
-    scores: { status: 'unavailable' },
+    scores: calculateProjectScores({ packages: [], findings: [] }),
     coverage: { overall: 0 },
     advisories: [],
     enrichment: {

@@ -94,7 +94,7 @@ describe('runCli', () => {
     assert.ok(report.graph.directDependencyCount >= 1);
     assert.ok(report.graph.packageCount >= report.graph.directDependencyCount);
     assert.equal(report.graph.lockfileVersion, '9.0');
-    assert.equal(report.diagnostics[0]?.code, 'PW_ANALYSIS_GRAPH_READY_RULES_PENDING');
+    assert.equal(report.diagnostics[0]?.code, 'PW_ANALYSIS_GRAPH_AND_SCORING_READY');
   });
 
   it('rejects invalid concurrency with a CLI exit code', async () => {

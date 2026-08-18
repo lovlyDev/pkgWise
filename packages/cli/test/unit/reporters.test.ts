@@ -66,7 +66,33 @@ const report: AnalysisReport = {
       recommendation: { summary: 'Review constraints.', actions: ['Regenerate the lockfile.'] },
     },
   ],
-  scores: { status: 'unavailable' },
+  scores: {
+    status: 'available',
+    modelVersion: '1.0.0',
+    overall: 78.5,
+    confidence: 0.8,
+    coverage: 0.7,
+    categories: [
+      {
+        category: 'reliability',
+        status: 'available',
+        score: 78.5,
+        confidence: 0.8,
+        coverage: 0.7,
+        contributions: [
+          {
+            ruleId: 'score/version-fragmentation',
+            category: 'reliability',
+            value: 78.5,
+            weight: 1,
+            confidence: 0.8,
+            evidenceIds: [],
+            explanation: 'Version spread and footprint were evaluated.',
+          },
+        ],
+      },
+    ],
+  },
   coverage: { overall: 0 },
   advisories: [],
   enrichment: {
@@ -98,6 +124,8 @@ describe('analysis reporters', () => {
     assert.match(markdown, /unsafe&lt;script&gt;\\\|&#96;project&#96;/);
     assert.match(markdown, /Unsafe &lt;title&gt; \\| &#96;code&#96;/);
     assert.match(markdown, /project -&gt; a\\\|b@1\.0\.0/);
+    assert.match(markdown, /78\.50\/100/);
+    assert.match(markdown, /Version spread and footprint were evaluated/);
   });
 
   it('renders SARIF 2.1.0 rules, results, fingerprints, paths, and diagnostics', () => {

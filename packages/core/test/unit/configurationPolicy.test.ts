@@ -108,6 +108,94 @@ describe('configuration and policy', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it('applies category weights and score policy thresholds', async () => {
+    const root = await createFixture();
+    try {
+      await writeFile(
+        join(root, 'pkgwise.config.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          scoring: {
+            categoryWeights: {
+              security: 0,
+              maintenance: 0,
+              'supply-chain': 0,
+              reliability: 0.6,
+              compatibility: 0.4,
+              quality: 0,
+            },
+          },
+          policy: {
+            fail: [
+              {
+                type: 'score',
+                target: 'overall',
+                below: 99,
+                minimumCoverage: 1,
+                minimumConfidence: 1,
+              },
+            ],
+          },
+        }),
+      );
+
+      const report = await createPkgWise().analyzeProject({ root });
+
+      assert.equal(report.scores.coverage, 1);
+      assert.equal(report.scores.confidence, 1);
+      assert.ok((report.scores.overall ?? 100) < 99);
+      assert.equal(report.policy.status, 'failed');
+      assert.equal(report.policy.violations[0]?.condition, 'fail[0].score');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not evaluate score policy when the requested category lacks data', async () => {
+    const root = await createFixture();
+    try {
+      await writeFile(
+        join(root, 'pkgwise.config.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          policy: {
+            fail: [{ type: 'score', target: 'maintenance', below: 70 }],
+          },
+        }),
+      );
+
+      const report = await createPkgWise().analyzeProject({ root });
+
+      assert.equal(report.policy.status, 'not-evaluated');
+      assert.deepEqual(report.policy.unevaluatedConditions, ['fail[0].score']);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects invalid scoring weights', async () => {
+    const root = await createFixture();
+    try {
+      await writeFile(
+        join(root, 'pkgwise.config.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          scoring: { categoryWeights: { security: 2 } },
+        }),
+      );
+
+      await assert.rejects(
+        createPkgWise().analyzeProject({ root }),
+        (error: unknown) =>
+          error instanceof PkgWiseError &&
+          error.code === 'PW_CONFIG_INVALID' &&
+          error.userMessage.includes('/scoring/categoryWeights/security'),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 async function createFixture(

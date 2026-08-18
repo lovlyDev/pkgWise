@@ -72,7 +72,14 @@ describe('analyzeProject', () => {
       assert.equal(report.graph.fidelity, 'full');
       assert.equal(report.packages.length, 2);
       assert.equal(report.packages.find((item) => item.name === 'b')?.minimumDepth, 2);
-      assert.equal(report.diagnostics[0]?.code, 'PW_ANALYSIS_GRAPH_READY_RULES_PENDING');
+      assert.equal(report.diagnostics[0]?.code, 'PW_ANALYSIS_GRAPH_AND_SCORING_READY');
+      assert.equal(report.scores.status, 'available');
+      assert.equal(report.scores.overall, 100);
+      assert.equal(report.scores.coverage, 0.28);
+      assert.equal(
+        report.scores.categories.find((category) => category.category === 'reliability')?.score,
+        100,
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -180,6 +187,12 @@ describe('analyzeProject', () => {
       assert.equal(report.enrichment.osv.eligibleCoordinateCount, 3);
       assert.equal(report.enrichment.osv.evaluatedCoordinateCount, 3);
       assert.equal(report.coverage.security, 1);
+      assert.equal(report.scores.coverage, 0.58);
+      assert.ok((report.scores.overall ?? 100) < 100);
+      assert.equal(
+        report.scores.categories.find((category) => category.category === 'security')?.status,
+        'available',
+      );
       assert.equal(report.advisories.length, 1);
       const securityFinding = report.findings.find(
         (finding) => finding.ruleId === 'security/osv-vulnerability',

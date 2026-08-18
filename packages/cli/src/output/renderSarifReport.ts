@@ -32,6 +32,9 @@ export function renderSarifReport(report: AnalysisReport): string {
             properties: {
               analysisStatus: report.status,
               coverage: report.coverage.overall,
+              overallScore: report.scores.overall,
+              scoreConfidence: report.scores.confidence,
+              scoreCoverage: report.scores.coverage,
               policyStatus: report.policy.status,
             },
           },
@@ -43,6 +46,18 @@ export function renderSarifReport(report: AnalysisReport): string {
           schemaVersion: report.schemaVersion,
           packageManager: report.project.manager,
           packageCount: report.graph.packageCount,
+          scoreModelVersion: report.scores.modelVersion,
+          categoryScores: Object.fromEntries(
+            report.scores.categories.map((category) => [
+              category.category,
+              {
+                status: category.status,
+                score: category.score,
+                coverage: category.coverage,
+                confidence: category.confidence,
+              },
+            ]),
+          ),
         },
       },
     ],

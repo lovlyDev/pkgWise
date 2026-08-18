@@ -30,6 +30,16 @@ The current executable validates this subset strictly. Unknown properties and ru
     "compatibility/unresolved-dependency": { "enabled": true },
     "reliability/dependency-cycle": false
   },
+  "scoring": {
+    "categoryWeights": {
+      "security": 0.3,
+      "maintenance": 0.2,
+      "supply-chain": 0.15,
+      "reliability": 0.15,
+      "compatibility": 0.1,
+      "quality": 0.1
+    }
+  },
   "policy": {
     "minimumOverallCoverage": 0,
     "fail": [
@@ -46,6 +56,13 @@ The current executable validates this subset strictly. Unknown properties and ru
       {
         "type": "coverage",
         "below": 0.7
+      },
+      {
+        "type": "score",
+        "target": "overall",
+        "below": 70,
+        "minimumCoverage": 0.6,
+        "minimumConfidence": 0.5
       }
     ]
   }
@@ -56,12 +73,15 @@ All fields within one finding condition are AND predicates. Entries in `policy.f
 OR conditions: any matching entry fails the policy. Severity uses `critical`, `high`, `medium`, `low`,
 or `info`; thresholds include that severity and every more severe finding.
 
+Score conditions may target `overall`, `security`, `maintenance`, `supply-chain`, `reliability`,
+`compatibility`, or `quality`. A score condition that lacks its required coverage or confidence is
+reported as `not-evaluated`. See [scoring](scoring.md) for formulas, current signal coverage, and labels.
+
 The report records the selected configuration source, enabled rules, policy status, violations, and
 matching finding fingerprints. Exit code `0` means the policy passed or no fail policy was configured;
 exit code `1` means analysis completed but the configured policy failed; invalid configuration exits
 with code `2`.
 
-Coverage is currently `0` until remote providers and scoring are implemented. Consequently, a positive
-coverage threshold intentionally fails today. The complete target schema remains specified in
-[the normative configuration specification](spec/13-configuration.md); fields not listed above are not
-accepted by the current executable yet.
+Coverage reflects the configured weighted scoring categories. Local locked scans currently cover
+reliability and compatibility signals; `--remote` adds exact-coordinate OSV security coverage. Fields not
+listed above are not accepted by the current executable yet.

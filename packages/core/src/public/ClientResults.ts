@@ -2,6 +2,7 @@ export interface PolicyDecisionSummary {
   readonly status: 'passed' | 'failed' | 'not-evaluated';
   readonly configured: boolean;
   readonly evaluatedFindingCount: number;
+  readonly unevaluatedConditions?: readonly string[];
   readonly violations: readonly {
     readonly condition: string;
     readonly message: string;
@@ -33,6 +34,37 @@ export interface DependencyCycleSummary {
 
 export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type FindingPriority = 'action-required' | 'review' | 'worth-knowing' | 'informational';
+export type ScoreCategory =
+  'security' | 'maintenance' | 'supply-chain' | 'reliability' | 'compatibility' | 'quality';
+
+export interface ScoreContribution {
+  readonly ruleId: string;
+  readonly category: ScoreCategory;
+  readonly value: number;
+  readonly weight: number;
+  readonly confidence: number;
+  readonly evidenceIds: readonly string[];
+  readonly explanation: string;
+}
+
+export interface CategoryScore {
+  readonly category: ScoreCategory;
+  readonly status: 'available' | 'insufficient-data' | 'not-applicable';
+  readonly score?: number;
+  readonly confidence: number;
+  readonly coverage: number;
+  readonly contributions: readonly ScoreContribution[];
+}
+
+export interface ProjectScores {
+  readonly status: 'available' | 'insufficient-data';
+  readonly modelVersion: '1.0.0';
+  readonly overall?: number;
+  readonly label?: 'strong' | 'generally-healthy' | 'review-recommended' | 'material-concerns';
+  readonly confidence: number;
+  readonly coverage: number;
+  readonly categories: readonly CategoryScore[];
+}
 
 export interface FindingEvidence {
   readonly id: string;
@@ -121,7 +153,7 @@ export interface AnalysisReport {
   };
   readonly packages: readonly PackageReport[];
   readonly findings: readonly Finding[];
-  readonly scores: { readonly status: 'unavailable' };
+  readonly scores: ProjectScores;
   readonly coverage: { readonly overall: number; readonly security?: number };
   readonly advisories: readonly ProjectSecurityAdvisory[];
   readonly enrichment: {

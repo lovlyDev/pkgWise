@@ -1,4 +1,9 @@
-import type { Finding, PackageReport, PolicyDecisionSummary } from '../public/ClientResults.js';
+import type {
+  Finding,
+  PackageReport,
+  PolicyDecisionSummary,
+  ProjectScores,
+} from '../public/ClientResults.js';
 import type { FindingPolicyCondition, PkgWiseConfigV1 } from '../public/PkgWiseConfig.js';
 
 export function evaluatePolicy(
@@ -6,10 +11,12 @@ export function evaluatePolicy(
   findings: readonly Finding[],
   packages: readonly PackageReport[],
   overallCoverage: number,
+  scores: ProjectScores,
 ): PolicyDecisionSummary {
   const conditions = config?.fail ?? [];
   const configured = config !== undefined;
   const violations: PolicyDecisionSummary['violations'][number][] = [];
+  const unevaluatedConditions: string[] = [];
 
   if (
     config?.minimumOverallCoverage !== undefined &&
@@ -34,6 +41,34 @@ export function evaluatePolicy(
       return;
     }
 
+    if (condition.type === 'score') {
+      const target =
+        condition.target === 'overall'
+          ? {
+              score: scores.overall,
+              coverage: scores.coverage,
+              confidence: scores.confidence,
+            }
+          : scores.categories.find((category) => category.category === condition.target);
+      if (
+        target?.score === undefined ||
+        (condition.minimumCoverage !== undefined && target.coverage < condition.minimumCoverage) ||
+        (condition.minimumConfidence !== undefined &&
+          target.confidence < condition.minimumConfidence)
+      ) {
+        unevaluatedConditions.push(`fail[${index}].score`);
+        return;
+      }
+      if (target.score < condition.below) {
+        violations.push({
+          condition: `fail[${index}].score`,
+          message: `${formatScoreTarget(condition.target)} score ${target.score.toFixed(2)} is below ${condition.below.toFixed(2)}.`,
+          findingFingerprints: [],
+        });
+      }
+      return;
+    }
+
     const matching = findings.filter((finding) => matchesFinding(condition, finding, packages));
     if (matching.length > 0) {
       violations.push({
@@ -45,11 +80,21 @@ export function evaluatePolicy(
   });
 
   return {
-    status: violations.length === 0 ? 'passed' : 'failed',
+    status:
+      violations.length > 0
+        ? 'failed'
+        : unevaluatedConditions.length > 0
+          ? 'not-evaluated'
+          : 'passed',
     configured,
     evaluatedFindingCount: findings.length,
+    ...(unevaluatedConditions.length === 0 ? {} : { unevaluatedConditions }),
     violations,
   };
+}
+
+function formatScoreTarget(target: string): string {
+  return target === 'overall' ? 'Overall' : target.replace('-', ' ');
 }
 
 function matchesFinding(
