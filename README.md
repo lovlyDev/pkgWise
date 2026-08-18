@@ -7,7 +7,7 @@ The project is available as a public alpha. Project scanning, package inspection
 ## Install the alpha
 
 ```bash
-npm install --global pkgwise@next
+npm install --global pkgwise
 pkgwise --version
 pkgwise doctor
 pkgwise scan .
