@@ -1,4 +1,4 @@
-import type { FindingExplanation } from '@pkgwise/core';
+import type { FindingExplanation } from '@lovlydev/pkgwise-core';
 
 export function renderFindingExplanation(explanation: FindingExplanation): string {
   const finding = explanation.finding;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { AnalysisReport, Finding } from '@pkgwise/core';
+import type { AnalysisReport, Finding } from '@lovlydev/pkgwise-core';
 import { renderAnalysisReport } from '../../src/output/renderAnalysisReport.js';
 
 const baseFinding: Finding = {

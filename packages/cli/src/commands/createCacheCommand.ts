@@ -1,4 +1,8 @@
-import { PkgWiseError, type CacheStatusReport, type ClearCacheResult } from '@pkgwise/core';
+import {
+  PkgWiseError,
+  type CacheStatusReport,
+  type ClearCacheResult,
+} from '@lovlydev/pkgwise-core';
 import { Command } from 'commander';
 import { readGlobalOptions } from '../options/readGlobalOptions.js';
 import { renderStructuredResult } from '../output/renderStructuredResult.js';

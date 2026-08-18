@@ -1,4 +1,4 @@
-import type { DoctorReport } from '@pkgwise/core';
+import type { DoctorReport } from '@lovlydev/pkgwise-core';
 
 const symbols = {
   pass: 'PASS',

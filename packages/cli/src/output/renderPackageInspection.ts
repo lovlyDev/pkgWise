@@ -1,4 +1,4 @@
-import type { PackageInspection } from '@pkgwise/core';
+import type { PackageInspection } from '@lovlydev/pkgwise-core';
 
 export function renderPackageInspection(inspection: PackageInspection): string {
   const lines = [

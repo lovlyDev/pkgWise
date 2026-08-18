@@ -18,7 +18,7 @@ for (const root of roots) {
         source,
         display,
         /from\s+['"]@pkgwise\/core\//,
-        'CLI must import only the public @pkgwise/core export',
+        'CLI must import only the public @lovlydev/pkgwise-core export',
       );
     }
     reject(source, display, /@ts-ignore/, 'type errors must not be suppressed with @ts-ignore');

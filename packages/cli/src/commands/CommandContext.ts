@@ -1,4 +1,4 @@
-import type { PkgWiseClient } from '@pkgwise/core';
+import type { PkgWiseClient } from '@lovlydev/pkgwise-core';
 import type { CliIo } from '../io/CliIo.js';
 
 export interface CommandContext {

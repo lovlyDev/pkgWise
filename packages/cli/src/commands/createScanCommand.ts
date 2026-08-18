@@ -1,4 +1,4 @@
-import type { AnalysisReport, FindingPriority, FindingSeverity } from '@pkgwise/core';
+import type { AnalysisReport, FindingPriority, FindingSeverity } from '@lovlydev/pkgwise-core';
 import { Command, Option } from 'commander';
 import { mapPolicyToExitCode } from '../exit/mapPolicyToExitCode.js';
 import { readGlobalOptions } from '../options/readGlobalOptions.js';

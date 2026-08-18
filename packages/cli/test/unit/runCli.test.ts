@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { describe, it } from 'node:test';
 import { join, resolve } from 'node:path';
-import { createPkgWise } from '@pkgwise/core';
+import { createPkgWise } from '@lovlydev/pkgwise-core';
 import { runCli } from '../../src/runCli.js';
 import { createMemoryIo } from '../support/createMemoryIo.js';
 

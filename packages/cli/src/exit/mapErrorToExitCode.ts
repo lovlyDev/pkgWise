@@ -1,4 +1,4 @@
-import { PkgWiseError } from '@pkgwise/core';
+import { PkgWiseError } from '@lovlydev/pkgwise-core';
 
 export function mapErrorToExitCode(error: unknown): number {
   if (!(error instanceof PkgWiseError)) {

@@ -1,10 +1,12 @@
 {
-  "name": "@pkgwise/core",
+  "name": "@lovlydev/pkgwise-core",
   "version": "0.1.0-alpha.0",
   "description": "Core API for explainable JavaScript dependency analysis",
   "keywords": ["dependencies", "security", "npm", "osv", "typescript", "cli"],
   "type": "module",
   "sideEffects": false,
+  "license": "MIT",
+  "author": "LovlyDev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lovlyDev/pkgWise.git",
@@ -21,7 +23,8 @@
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {

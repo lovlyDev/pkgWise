@@ -1,4 +1,4 @@
-import type { AnalysisReport, Finding } from '@pkgwise/core';
+import type { AnalysisReport, Finding } from '@lovlydev/pkgwise-core';
 
 export function renderMarkdownReport(report: AnalysisReport): string {
   const projectName = report.project.name ?? report.project.rootName;

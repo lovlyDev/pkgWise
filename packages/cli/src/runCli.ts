@@ -1,4 +1,4 @@
-import { createPkgWise, PkgWiseError, type PkgWiseClient } from '@pkgwise/core';
+import { createPkgWise, PkgWiseError, type PkgWiseClient } from '@lovlydev/pkgwise-core';
 import { CommanderError } from 'commander';
 import { createCli } from './createCli.js';
 import { mapErrorToExitCode } from './exit/mapErrorToExitCode.js';

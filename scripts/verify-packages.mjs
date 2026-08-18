@@ -22,7 +22,7 @@ try {
   runNodeCli(pnpmCli, ['build'], workspace);
   runNodeCli(
     pnpmCli,
-    ['--filter', '@pkgwise/core', 'pack', '--pack-destination', artifacts],
+    ['--filter', '@lovlydev/pkgwise-core', 'pack', '--pack-destination', artifacts],
     workspace,
   );
   runNodeCli(pnpmCli, ['--filter', 'pkgwise', 'pack', '--pack-destination', artifacts], workspace);
@@ -52,16 +52,18 @@ try {
   else runNodeCli(npmCli, installArguments, temporary);
 
   const installedCore = JSON.parse(
-    await readFile(join(temporary, 'node_modules/@pkgwise/core/package.json'), 'utf8'),
+    await readFile(join(temporary, 'node_modules/@lovlydev/pkgwise-core/package.json'), 'utf8'),
   );
   const installedCli = JSON.parse(
     await readFile(join(temporary, 'node_modules/pkgwise/package.json'), 'utf8'),
   );
-  await readFile(join(temporary, 'node_modules/@pkgwise/core/README.md'), 'utf8');
-  await readFile(join(temporary, 'node_modules/@pkgwise/core/CHANGELOG.md'), 'utf8');
+  await readFile(join(temporary, 'node_modules/@lovlydev/pkgwise-core/README.md'), 'utf8');
+  await readFile(join(temporary, 'node_modules/@lovlydev/pkgwise-core/CHANGELOG.md'), 'utf8');
+  await readFile(join(temporary, 'node_modules/@lovlydev/pkgwise-core/LICENSE'), 'utf8');
   await readFile(join(temporary, 'node_modules/pkgwise/README.md'), 'utf8');
   await readFile(join(temporary, 'node_modules/pkgwise/CHANGELOG.md'), 'utf8');
-  if (String(installedCli.dependencies?.['@pkgwise/core']).startsWith('workspace:')) {
+  await readFile(join(temporary, 'node_modules/pkgwise/LICENSE'), 'utf8');
+  if (String(installedCli.dependencies?.['@lovlydev/pkgwise-core']).startsWith('workspace:')) {
     throw new Error('Packed CLI still contains a workspace protocol dependency.');
   }
   if (installedCore.version !== installedCli.version) {
@@ -73,7 +75,7 @@ try {
     [
       '--input-type=module',
       '--eval',
-      "import { createPkgWise } from '@pkgwise/core'; if (typeof createPkgWise !== 'function') process.exit(1);",
+      "import { createPkgWise } from '@lovlydev/pkgwise-core'; if (typeof createPkgWise !== 'function') process.exit(1);",
     ],
     temporary,
   );

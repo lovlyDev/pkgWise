@@ -1,4 +1,4 @@
-import type { PackageComparison } from '@pkgwise/core';
+import type { PackageComparison } from '@lovlydev/pkgwise-core';
 
 export function renderPackageComparison(comparison: PackageComparison): string {
   const lines = [

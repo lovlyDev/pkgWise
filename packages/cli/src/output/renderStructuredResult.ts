@@ -1,4 +1,4 @@
-import { PkgWiseError } from '@pkgwise/core';
+import { PkgWiseError } from '@lovlydev/pkgwise-core';
 import type { OutputFormat } from '../options/GlobalOptions.js';
 import { renderGenericMarkdown } from './renderMarkdownReport.js';
 

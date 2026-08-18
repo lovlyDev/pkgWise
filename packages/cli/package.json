@@ -5,6 +5,8 @@
   "keywords": ["dependencies", "security", "npm", "osv", "audit", "cli"],
   "type": "module",
   "sideEffects": false,
+  "license": "MIT",
+  "author": "LovlyDev",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lovlyDev/pkgWise.git",
@@ -21,7 +23,8 @@
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "bin": {
     "pkgwise": "./dist/bin/pkgwise.js"
@@ -39,7 +42,7 @@
     "test": "node ../../node_modules/typescript/bin/tsc -p tsconfig.test.json && node --test .test-dist/test/**/*.test.js"
   },
   "dependencies": {
-    "@pkgwise/core": "workspace:*",
+    "@lovlydev/pkgwise-core": "workspace:*",
     "commander": "^14.0.0"
   },
   "engines": {

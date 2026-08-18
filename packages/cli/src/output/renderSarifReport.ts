@@ -1,4 +1,4 @@
-import type { AnalysisReport, Finding, FindingSeverity } from '@pkgwise/core';
+import type { AnalysisReport, Finding, FindingSeverity } from '@lovlydev/pkgwise-core';
 
 export function renderSarifReport(report: AnalysisReport): string {
   const ruleIds = [...new Set(report.findings.map((finding) => finding.ruleId))].sort();

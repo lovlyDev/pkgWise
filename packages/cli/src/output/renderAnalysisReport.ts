@@ -1,4 +1,9 @@
-import type { AnalysisReport, Finding, FindingPriority, FindingSeverity } from '@pkgwise/core';
+import type {
+  AnalysisReport,
+  Finding,
+  FindingPriority,
+  FindingSeverity,
+} from '@lovlydev/pkgwise-core';
 
 export interface RenderAnalysisReportOptions {
   readonly minimumSeverity?: FindingSeverity;

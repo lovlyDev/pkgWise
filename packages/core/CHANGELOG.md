@@ -1,4 +1,4 @@
-# @pkgwise/core changelog
+# @lovlydev/pkgwise-core changelog
 
 ## 0.1.0-alpha.0
 

@@ -1,4 +1,4 @@
-import type { FindingPriority, FindingSeverity } from '@pkgwise/core';
+import type { FindingPriority, FindingSeverity } from '@lovlydev/pkgwise-core';
 import { InvalidArgumentError } from 'commander';
 
 const severities: readonly FindingSeverity[] = ['critical', 'high', 'medium', 'low', 'info'];

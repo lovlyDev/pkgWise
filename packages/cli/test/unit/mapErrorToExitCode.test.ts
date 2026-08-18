@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { PkgWiseError } from '@pkgwise/core';
+import { PkgWiseError } from '@lovlydev/pkgwise-core';
 import { mapErrorToExitCode } from '../../src/exit/mapErrorToExitCode.js';
 
 describe('mapErrorToExitCode', () => {

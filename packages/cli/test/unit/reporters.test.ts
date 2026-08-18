@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { AnalysisReport } from '@pkgwise/core';
+import type { AnalysisReport } from '@lovlydev/pkgwise-core';
 import { renderMarkdownReport } from '../../src/output/renderMarkdownReport.js';
 import { renderSarifReport } from '../../src/output/renderSarifReport.js';
 

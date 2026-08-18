@@ -20,7 +20,7 @@
     "format": "prettier --write \"packages/*/{src,test}/**/*.ts\" \"scripts/**/*.mjs\" \"*.json\" \".changeset/*.json\" \".github/**/*.yml\"",
     "format:check": "prettier --check \"packages/*/{src,test}/**/*.ts\" \"scripts/**/*.mjs\" \"*.json\" \".changeset/*.json\" \".github/**/*.yml\"",
     "lint": "node scripts/lint-source.mjs",
-    "typecheck": "pnpm --filter @pkgwise/core build && pnpm --recursive typecheck",
+    "typecheck": "pnpm --filter @lovlydev/pkgwise-core build && pnpm --recursive typecheck",
     "test": "pnpm build && pnpm --recursive test",
     "verify:pack": "node scripts/verify-packages.mjs",
     "release:metadata": "node scripts/check-release-metadata.mjs",

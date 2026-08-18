@@ -1,4 +1,4 @@
-import type { PkgWiseClient } from '@pkgwise/core';
+import type { PkgWiseClient } from '@lovlydev/pkgwise-core';
 import { Command } from 'commander';
 import { createCacheCommand } from './commands/createCacheCommand.js';
 import type { CommandContext } from './commands/CommandContext.js';
