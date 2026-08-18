@@ -7,8 +7,17 @@ public npm Registry. Without `--project`, the operation is remote-only and does 
 `package.json`. Supplying `--project` combines registry metadata with installed graph context.
 
 The current normalized metadata includes available versions, dist-tags, selected exact version,
-description, license, deprecation notice, Node engine constraint, and repository reference. A tag such
-as `latest` or `next` is resolved from the returned package document and the exact result is displayed.
+description, license, deprecation notice, Node engine constraint, repository reference, publication and
+creation timestamps, maintainer count, and lifecycle-script names. Script commands are not exposed in
+project reports and are never executed. A tag such as `latest` or `next` is resolved from the returned
+package document and the exact result is displayed.
+
+`pkgwise scan <path> --remote` also enriches every unique exact lockfile coordinate from the npm
+Registry. Coordinates are grouped by package name so multiple installed versions reuse one cached
+package document. Up to four package-name groups run concurrently. Project JSON includes compact
+per-coordinate metadata, evaluated/eligible/unavailable counts, cache provenance, and an `available`,
+`partial`, `offline`, or `unavailable` Registry status. Deprecations become confirmed maintenance
+findings; install hooks become explicitly potential-risk supply-chain findings.
 
 Provider requests:
 

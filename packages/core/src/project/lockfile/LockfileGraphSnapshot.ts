@@ -14,6 +14,7 @@ export interface LockfilePackageRecord {
   readonly name: string;
   readonly version?: string;
   readonly dependencies: readonly LockfileDependencyReference[];
+  readonly integrity?: 'present' | 'missing';
 }
 
 export interface LockfileImporterRecord {

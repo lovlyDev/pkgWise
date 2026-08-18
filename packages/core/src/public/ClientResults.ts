@@ -20,6 +20,7 @@ export interface PackageReport {
   readonly dependencyPaths: readonly DependencyPath[];
   readonly pathsTruncated: boolean;
   readonly resolvedDependencyCount: number;
+  readonly integrity?: 'present' | 'missing';
 }
 
 export interface DuplicateVersionGroup {
@@ -58,7 +59,7 @@ export interface CategoryScore {
 
 export interface ProjectScores {
   readonly status: 'available' | 'insufficient-data';
-  readonly modelVersion: '1.0.0';
+  readonly modelVersion: '1.0.0' | '1.1.0';
   readonly overall?: number;
   readonly label?: 'strong' | 'generally-healthy' | 'review-recommended' | 'material-concerns';
   readonly confidence: number;
@@ -94,7 +95,7 @@ export interface Finding {
   readonly severity: FindingSeverity;
   readonly priority: FindingPriority;
   readonly confidence: number;
-  readonly category: 'security' | 'reliability' | 'compatibility';
+  readonly category: ScoreCategory;
   readonly context: {
     readonly direct: boolean;
     readonly scopes: readonly ('runtime' | 'development' | 'peer' | 'optional')[];
@@ -156,9 +157,16 @@ export interface AnalysisReport {
   readonly scores: ProjectScores;
   readonly coverage: { readonly overall: number; readonly security?: number };
   readonly advisories: readonly ProjectSecurityAdvisory[];
+  readonly packageMetadata: readonly ProjectPackageMetadata[];
   readonly enrichment: {
     readonly requested: boolean;
     readonly osv: {
+      readonly status: 'not-requested' | 'available' | 'partial' | 'offline' | 'unavailable';
+      readonly eligibleCoordinateCount: number;
+      readonly evaluatedCoordinateCount: number;
+      readonly unavailableCoordinateCount: number;
+    };
+    readonly npm: {
       readonly status: 'not-requested' | 'available' | 'partial' | 'offline' | 'unavailable';
       readonly eligibleCoordinateCount: number;
       readonly evaluatedCoordinateCount: number;
@@ -234,6 +242,24 @@ export interface RemotePackageMetadata {
   readonly deprecated?: string;
   readonly engines?: Readonly<Record<string, string>>;
   readonly repository?: string;
+  readonly publishedAt?: string;
+  readonly createdAt?: string;
+  readonly maintainerCount?: number;
+  readonly lifecycleScripts?: readonly string[];
+}
+
+export interface ProjectPackageMetadata {
+  readonly name: string;
+  readonly version: string;
+  readonly status: RemotePackageMetadata['status'];
+  readonly source: RemotePackageMetadata['source'];
+  readonly deprecated?: string;
+  readonly license?: string;
+  readonly repository?: string;
+  readonly publishedAt?: string;
+  readonly createdAt?: string;
+  readonly maintainerCount?: number;
+  readonly lifecycleScripts?: readonly string[];
 }
 
 export interface PackageComparison {

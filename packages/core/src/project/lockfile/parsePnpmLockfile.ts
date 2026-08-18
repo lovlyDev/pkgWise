@@ -46,10 +46,13 @@ export function parsePnpmLockfile(text: string): LockfileGraphSnapshot {
     const identity = parsePnpmPackageKey(key);
     if (identity === undefined) continue;
     const relations = isRecord(snapshot) ? snapshot : isRecord(metadata) ? metadata : {};
+    const resolution =
+      isRecord(metadata) && isRecord(metadata.resolution) ? metadata.resolution : {};
     packages.push({
       id: key,
       name: identity.name,
       version: identity.version,
+      integrity: typeof resolution.integrity === 'string' ? 'present' : 'missing',
       dependencies: readPnpmDependencySections(relations, (name, requested) =>
         resolvePnpmTarget(name, requested, identities),
       ),

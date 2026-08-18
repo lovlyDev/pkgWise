@@ -82,6 +82,7 @@ matching finding fingerprints. Exit code `0` means the policy passed or no fail 
 exit code `1` means analysis completed but the configured policy failed; invalid configuration exits
 with code `2`.
 
-Coverage reflects the configured weighted scoring categories. Local locked scans currently cover
-reliability and compatibility signals; `--remote` adds exact-coordinate OSV security coverage. Fields not
-listed above are not accepted by the current executable yet.
+Coverage reflects the configured weighted scoring categories. Local locked scans cover reliability,
+compatibility, release stability, and lockfile-integrity signals. `--remote` adds exact-coordinate OSV
+security data and npm Registry maintenance, lifecycle, resolution, license, and repository signals.
+Fields not listed above are not accepted by the current executable yet.

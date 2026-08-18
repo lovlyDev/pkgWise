@@ -3,6 +3,7 @@ import { basename, resolve } from 'node:path';
 import { PkgWiseError } from '../errors/PkgWiseError.js';
 import type { PackageManifestSnapshot } from '../project/manifest/PackageManifestSnapshot.js';
 import { localRuleIds } from '../rules/runLocalRules.js';
+import { registryRuleIds } from '../rules/createRegistryFindings.js';
 import type {
   FindingPolicyCondition,
   LoadedPkgWiseConfig,
@@ -23,7 +24,7 @@ const scoreTargets = [
   'compatibility',
   'quality',
 ] as const;
-const policyRuleIds = [...localRuleIds, 'security/osv-vulnerability'] as const;
+const policyRuleIds = [...localRuleIds, ...registryRuleIds, 'security/osv-vulnerability'] as const;
 
 export async function loadPkgWiseConfig(
   projectRoot: string,

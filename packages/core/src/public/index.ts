@@ -30,6 +30,7 @@ export type {
   RemotePackageMetadata,
   SecurityAdvisory,
   ProjectSecurityAdvisory,
+  ProjectPackageMetadata,
   PolicyDecisionSummary,
   ProjectScores,
   CategoryScore,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { DependencyGraphAnalysis } from '../../src/project/lockfile/analyzeDependencyGraph.js';
 import type { ProjectOsvResult } from '../../src/providers/osv/fetchProjectOsv.js';
+import type { ProjectNpmResult } from '../../src/providers/npm/fetchProjectNpm.js';
 import type {
   FindingSeverity,
   PackageReport,
@@ -92,6 +93,65 @@ describe('project scoring', () => {
     assert.equal(result.coverage, 0);
     assert.equal(result.confidence, 0);
   });
+
+  it('makes all six categories available with complete OSV and Registry evidence', () => {
+    const packages = [
+      { ...packageReport('healthy', '1.0.0', true), integrity: 'present' as const },
+    ];
+    const result = calculateProjectScores({
+      graph: graph(packages),
+      packages,
+      findings: [],
+      osv: osvResult([coordinate('healthy', '1.0.0')]),
+      npm: npmResult('healthy', {
+        publishedAt: '2026-01-01T00:00:00.000Z',
+        maintainerCount: 2,
+        license: 'MIT',
+        repository: 'https://example.test/healthy',
+      }),
+      now: new Date('2026-08-01T00:00:00.000Z'),
+    });
+
+    assert.equal(result.modelVersion, '1.1.0');
+    assert.equal(result.coverage, 0.93);
+    assert.ok(result.confidence >= 0.89);
+    assert.equal(result.label, 'strong');
+    assert.ok(result.categories.every((category) => category.status === 'available'));
+  });
+
+  it('penalizes deprecated, old, single-maintainer releases without collapsing confidence', () => {
+    const packages = [{ ...packageReport('legacy', '1.0.0', true), integrity: 'missing' as const }];
+    const healthy = calculateProjectScores({
+      graph: graph(packages),
+      packages,
+      findings: [],
+      osv: osvResult([coordinate('legacy', '1.0.0')]),
+      npm: npmResult('legacy', {
+        publishedAt: '2026-01-01T00:00:00.000Z',
+        maintainerCount: 2,
+        license: 'MIT',
+        repository: 'https://example.test/legacy',
+      }),
+      now: new Date('2026-08-01T00:00:00.000Z'),
+    });
+    const legacy = calculateProjectScores({
+      graph: graph(packages),
+      packages,
+      findings: [],
+      osv: osvResult([coordinate('legacy', '1.0.0')]),
+      npm: npmResult('legacy', {
+        publishedAt: '2016-01-01T00:00:00.000Z',
+        maintainerCount: 1,
+        deprecated: 'No longer maintained.',
+        lifecycleScripts: ['install'],
+      }),
+      now: new Date('2026-08-01T00:00:00.000Z'),
+    });
+
+    assert.ok((legacy.overall ?? 100) < (healthy.overall ?? 0));
+    assert.ok(categoryScore(legacy, 'maintenance') < categoryScore(healthy, 'maintenance'));
+    assert.ok(categoryScore(legacy, 'supply-chain') < categoryScore(healthy, 'supply-chain'));
+  });
 });
 
 const focusedLocalWeights = {
@@ -172,4 +232,36 @@ function osvResult(coordinates: ProjectOsvResult['coordinates']): ProjectOsvResu
 
 function securityScore(result: ReturnType<typeof calculateProjectScores>): number {
   return result.categories.find((category) => category.category === 'security')?.score as number;
+}
+
+function categoryScore(
+  result: ReturnType<typeof calculateProjectScores>,
+  category: 'maintenance' | 'supply-chain',
+): number {
+  return result.categories.find((item) => item.category === category)?.score as number;
+}
+
+function npmResult(
+  name: string,
+  metadata: Partial<ProjectNpmResult['packages'][number]>,
+): ProjectNpmResult {
+  return {
+    status: 'available',
+    eligibleCoordinateCount: 1,
+    evaluatedCoordinateCount: 1,
+    unavailableCoordinateCount: 0,
+    packages: [
+      {
+        name,
+        version: '1.0.0',
+        status: 'available',
+        source: {
+          provider: 'npm-registry',
+          url: `https://registry.npmjs.org/${name}`,
+          cache: 'miss',
+        },
+        ...metadata,
+      },
+    ],
+  };
 }

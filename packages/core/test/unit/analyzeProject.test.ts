@@ -75,7 +75,7 @@ describe('analyzeProject', () => {
       assert.equal(report.diagnostics[0]?.code, 'PW_ANALYSIS_GRAPH_AND_SCORING_READY');
       assert.equal(report.scores.status, 'available');
       assert.equal(report.scores.overall, 100);
-      assert.equal(report.scores.coverage, 0.28);
+      assert.equal(report.scores.coverage, 0.33);
       assert.equal(
         report.scores.categories.find((category) => category.category === 'reliability')?.score,
         100,
@@ -156,7 +156,30 @@ describe('analyzeProject', () => {
         }),
       );
       const client = createPkgWise({
-        fetch: (async (_input, init) => {
+        fetch: (async (fetchInput, init) => {
+          if (String(fetchInput).includes('registry.npmjs.org')) {
+            const name = decodeURIComponent(String(fetchInput).split('/').at(-1) ?? '');
+            const version = name === 'shared' ? '2.0.0' : '1.0.0';
+            return new Response(
+              JSON.stringify({
+                name,
+                time: {
+                  created: '2024-01-01T00:00:00.000Z',
+                  [version]: '2026-06-01T00:00:00.000Z',
+                },
+                maintainers: [{ name: 'one' }, { name: 'two' }],
+                versions: {
+                  [version]: {
+                    version,
+                    license: 'MIT',
+                    repository: { type: 'git', url: `https://example.test/${name}.git` },
+                    ...(name === 'shared' ? { scripts: { install: 'node install.js' } } : {}),
+                  },
+                },
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            );
+          }
           const query = JSON.parse(String(init?.body)) as {
             package: { name: string };
             version: string;
@@ -186,9 +209,13 @@ describe('analyzeProject', () => {
       assert.equal(report.enrichment.osv.status, 'available');
       assert.equal(report.enrichment.osv.eligibleCoordinateCount, 3);
       assert.equal(report.enrichment.osv.evaluatedCoordinateCount, 3);
+      assert.equal(report.enrichment.npm.status, 'available');
+      assert.equal(report.enrichment.npm.evaluatedCoordinateCount, 3);
+      assert.equal(report.packageMetadata.length, 3);
       assert.equal(report.coverage.security, 1);
-      assert.equal(report.scores.coverage, 0.58);
+      assert.equal(report.scores.coverage, 0.93);
       assert.ok((report.scores.overall ?? 100) < 100);
+      assert.ok(report.scores.categories.every((category) => category.status === 'available'));
       assert.equal(
         report.scores.categories.find((category) => category.category === 'security')?.status,
         'available',
@@ -199,6 +226,11 @@ describe('analyzeProject', () => {
       );
       assert.equal(securityFinding?.severity, 'high');
       assert.equal(securityFinding?.subject.packageIds.length, 2);
+      assert.equal(
+        report.findings.find((finding) => finding.ruleId === 'supply-chain/install-script')
+          ?.severity,
+        'info',
+      );
       assert.equal(report.policy.status, 'failed');
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -224,8 +256,23 @@ describe('analyzeProject', () => {
         }),
       );
       const online = createPkgWise({
-        fetch: (async () =>
-          new Response(JSON.stringify({ vulns: [] }), { status: 200 })) as typeof globalThis.fetch,
+        fetch: (async (fetchInput) =>
+          String(fetchInput).includes('registry.npmjs.org')
+            ? new Response(
+                JSON.stringify({
+                  name: 'cached',
+                  time: {
+                    created: '2024-01-01T00:00:00.000Z',
+                    '1.0.0': '2026-01-01T00:00:00.000Z',
+                  },
+                  maintainers: [{ name: 'owner' }],
+                  versions: { '1.0.0': { version: '1.0.0', license: 'MIT' } },
+                }),
+                { status: 200 },
+              )
+            : new Response(JSON.stringify({ vulns: [] }), {
+                status: 200,
+              })) as typeof globalThis.fetch,
       });
       await online.analyzeProject({ root, remote: true, cacheDirectory });
       const offline = createPkgWise({
@@ -242,6 +289,7 @@ describe('analyzeProject', () => {
       });
 
       assert.equal(report.enrichment.osv.status, 'available');
+      assert.equal(report.enrichment.npm.status, 'available');
       assert.equal(report.enrichment.osv.evaluatedCoordinateCount, 1);
       assert.equal(report.coverage.security, 1);
     } finally {

@@ -82,9 +82,16 @@ const report: AnalysisReport = {
   },
   coverage: { overall: 0 },
   advisories: [],
+  packageMetadata: [],
   enrichment: {
     requested: false,
     osv: {
+      status: 'not-requested',
+      eligibleCoordinateCount: 0,
+      evaluatedCoordinateCount: 0,
+      unavailableCoordinateCount: 0,
+    },
+    npm: {
       status: 'not-requested',
       eligibleCoordinateCount: 0,
       evaluatedCoordinateCount: 0,
@@ -107,6 +114,7 @@ describe('renderAnalysisReport', () => {
     assert.match(output, /Findings: 2 total · 1 displayed/);
     assert.match(output, /Multiple versions are installed/);
     assert.match(output, /Scores: 78\.50\/100/);
+    assert.match(output, /Metadata: npm Registry not-requested/);
     assert.match(output, /score\/version-fragmentation/);
     assert.doesNotMatch(output, /Cycle exists/);
   });

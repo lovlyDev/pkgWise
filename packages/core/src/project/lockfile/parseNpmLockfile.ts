@@ -65,6 +65,7 @@ export function parseNpmLockfile(text: string): LockfileGraphSnapshot {
       id: location,
       name,
       ...(typeof entry.version === 'string' ? { version: entry.version } : {}),
+      integrity: typeof entry.integrity === 'string' ? 'present' : 'missing',
       dependencies: readNpmPackageDependencies(entry, resolveTarget),
     });
   }

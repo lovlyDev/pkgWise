@@ -16,7 +16,7 @@ export function renderSarifReport(report: AnalysisReport): string {
             ...(isSemanticVersion(report.tool.version)
               ? { semanticVersion: report.tool.version }
               : {}),
-            informationUri: 'docs/spec/README.md',
+            informationUri: 'https://github.com/lovlyDev/pkgWise#readme',
             rules: ruleIds.map((ruleId) => createRuleDescriptor(ruleId, report.findings)),
           },
         },
@@ -36,6 +36,13 @@ export function renderSarifReport(report: AnalysisReport): string {
               scoreConfidence: report.scores.confidence,
               scoreCoverage: report.scores.coverage,
               policyStatus: report.policy.status,
+              osvStatus: report.enrichment.osv.status,
+              npmRegistryStatus: report.enrichment.npm.status,
+              npmRegistryCoverage:
+                report.enrichment.npm.eligibleCoordinateCount === 0
+                  ? 0
+                  : report.enrichment.npm.evaluatedCoordinateCount /
+                    report.enrichment.npm.eligibleCoordinateCount,
             },
           },
         ],

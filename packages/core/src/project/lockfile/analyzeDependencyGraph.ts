@@ -183,6 +183,7 @@ function createPackageReport(
     resolvedDependencyCount: record.dependencies.filter(
       (dependency) => dependency.targetId !== undefined && records.has(dependency.targetId),
     ).length,
+    ...(record.integrity === undefined ? {} : { integrity: record.integrity }),
   };
 }
 

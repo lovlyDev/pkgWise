@@ -51,12 +51,16 @@ describe('remote npm inspection', () => {
           name: 'demo-package',
           description: 'A test package.',
           'dist-tags': { latest: '2.0.0', next: '3.0.0-beta.1' },
+          time: { created: '2020-01-01T00:00:00Z', '3.0.0-beta.1': '2025-12-01T00:00:00Z' },
+          maintainers: [{ name: 'alice' }, { name: 'bob' }],
           versions: {
             '2.0.0': { version: '2.0.0', license: 'MIT', engines: { node: '>=22' } },
             '3.0.0-beta.1': {
               version: '3.0.0-beta.1',
               license: 'MIT',
               deprecated: 'Use the stable release.',
+              repository: { type: 'git', url: 'https://example.test/demo.git' },
+              scripts: { preinstall: 'node check.js', test: 'node test.js' },
             },
           },
         }),
@@ -89,6 +93,10 @@ describe('remote npm inspection', () => {
       assert.equal(first.remote?.selectedVersion, '3.0.0-beta.1');
       assert.equal(first.remote?.source.cache, 'miss');
       assert.equal(first.remote?.deprecated, 'Use the stable release.');
+      assert.equal(first.remote?.publishedAt, '2025-12-01T00:00:00Z');
+      assert.equal(first.remote?.createdAt, '2020-01-01T00:00:00Z');
+      assert.equal(first.remote?.maintainerCount, 2);
+      assert.deepEqual(first.remote?.lifecycleScripts, ['preinstall']);
       assert.equal(first.advisories.length, 2);
       assert.ok(first.advisories.some((item) => item.active === false));
       const activeAdvisory = first.advisories.find((item) => item.active);

@@ -9,11 +9,11 @@ remain the primary actionable output.
 | Category | Weight | Current alpha signal |
 | --- | ---: | --- |
 | Security | 0.30 | Exact-coordinate OSV advisories when `--remote` is enabled |
-| Maintenance | 0.20 | Insufficient data until repository enrichment is available |
-| Supply chain | 0.15 | Insufficient data until lifecycle and integrity evidence is available |
+| Maintenance | 0.20 | npm deprecation, exact-release recency, and maintainer redundancy with `--remote` |
+| Supply chain | 0.15 | Lockfile integrity, npm lifecycle scripts, and exact Registry resolution |
 | Reliability | 0.15 | Version fragmentation across the resolved graph |
 | Compatibility | 0.10 | Required dependency relations unresolved by the lockfile |
-| Quality | 0.10 | Release stability is recorded, but the category remains insufficient until metadata coverage expands |
+| Quality | 0.10 | Release stability plus npm license and repository metadata |
 
 Unavailable signals are not treated as zero. A category needs at least 35% coverage before its numeric
 score participates in the overall result. The overall score is weighted by category confidence, while
@@ -37,6 +37,21 @@ Fragmentation penalties account for distinct versions, major-version spread, and
 reachable locators. Compatibility penalties account for unresolved required relations, dependency scope,
 and whether the relation starts at the project importer. Optional and local/workspace-style references
 are excluded from unresolved-dependency penalties.
+
+## Maintenance, supply chain, and quality
+
+Maintenance uses the npm deprecation field as a confirmed fact, applies gradual release-age bands, and
+adds a bounded single-maintainer penalty. The maximum current maintenance coverage is 65%; repository
+archive state and release cadence remain intentionally unavailable rather than being assumed healthy.
+
+Supply-chain scoring checks whether resolved lockfile records contain integrity metadata, whether an
+exact Registry coordinate resolves, and whether the published manifest declares install-time lifecycle
+scripts. Lifecycle scripts are common and are not treated as proof of compromise: direct runtime install
+hooks receive a larger bounded penalty and generate potential-risk evidence for review.
+
+Quality combines exact-version prerelease status with the presence of license and source-repository
+metadata. Missing metadata receives a bounded penalty; PkgWise does not infer a license or repository.
+Registry-dependent contribution coverage is scaled by evaluated/eligible exact coordinates.
 
 ## Configuration
 
@@ -83,4 +98,4 @@ instead of passing or failing silently.
 | 50–69.99 | review recommended |
 | 0–49.99 | material concerns |
 
-Reports retain values to two decimal places. The model version for this release is `1.0.0`.
+Reports retain values to two decimal places. The model version for this release is `1.1.0`.

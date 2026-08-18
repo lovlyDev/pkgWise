@@ -181,9 +181,16 @@ function createRemoteOnlyReport(context: AnalyzeProjectContext): AnalysisReport 
     scores: calculateProjectScores({ packages: [], findings: [] }),
     coverage: { overall: 0 },
     advisories: [],
+    packageMetadata: [],
     enrichment: {
       requested: false,
       osv: {
+        status: 'not-requested',
+        eligibleCoordinateCount: 0,
+        evaluatedCoordinateCount: 0,
+        unavailableCoordinateCount: 0,
+      },
+      npm: {
         status: 'not-requested',
         eligibleCoordinateCount: 0,
         evaluatedCoordinateCount: 0,

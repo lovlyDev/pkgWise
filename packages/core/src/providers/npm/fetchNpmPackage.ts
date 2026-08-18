@@ -102,6 +102,9 @@ function normalizeDocument(
     };
   }
   const metadata = isRecord(selected) ? selected : value;
+  const times = stringRecord(value.time);
+  const lifecycleScripts = readLifecycleScripts(metadata.scripts);
+  const maintainerCount = readMaintainerCount(value.maintainers ?? metadata.maintainers);
   return {
     status: 'available',
     source: { provider: 'npm-registry', url: url.toString(), cache },
@@ -120,7 +123,36 @@ function normalizeDocument(
     ...(readRepository(metadata.repository) === undefined
       ? {}
       : { repository: readRepository(metadata.repository) as string }),
+    ...(selectedVersion === undefined || times[selectedVersion] === undefined
+      ? {}
+      : { publishedAt: times[selectedVersion] }),
+    ...(times.created === undefined ? {} : { createdAt: times.created }),
+    ...(maintainerCount === undefined ? {} : { maintainerCount }),
+    ...(selectedVersion === undefined ? {} : { lifecycleScripts }),
   };
+}
+
+function readLifecycleScripts(value: unknown): string[] {
+  if (!isRecord(value)) return [];
+  const lifecycle = new Set([
+    'preinstall',
+    'install',
+    'postinstall',
+    'prepublish',
+    'prepublishOnly',
+    'prepare',
+  ]);
+  return Object.entries(value)
+    .filter(([name, command]) => lifecycle.has(name) && typeof command === 'string')
+    .map(([name]) => name)
+    .sort();
+}
+
+function readMaintainerCount(value: unknown): number | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter(
+    (item) => typeof item === 'string' || (isRecord(item) && typeof item.name === 'string'),
+  ).length;
 }
 
 function resolveVersion(

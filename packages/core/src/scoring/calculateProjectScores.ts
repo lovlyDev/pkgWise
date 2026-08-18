@@ -1,5 +1,6 @@
 import type { DependencyGraphAnalysis } from '../project/lockfile/analyzeDependencyGraph.js';
 import type { ProjectOsvResult } from '../providers/osv/fetchProjectOsv.js';
+import type { ProjectNpmResult } from '../providers/npm/fetchProjectNpm.js';
 import type {
   CategoryScore,
   Finding,
@@ -32,17 +33,19 @@ export interface CalculateProjectScoresInput {
   readonly packages: readonly PackageReport[];
   readonly findings: readonly Finding[];
   readonly osv?: ProjectOsvResult;
+  readonly npm?: ProjectNpmResult;
+  readonly now?: Date;
   readonly categoryWeights?: Partial<Readonly<Record<ScoreCategory, number>>>;
 }
 
 export function calculateProjectScores(input: CalculateProjectScoresInput): ProjectScores {
   const categories = [
     calculateSecurity(input),
-    unavailableCategory('maintenance'),
-    unavailableCategory('supply-chain'),
+    calculateMaintenance(input),
+    calculateSupplyChain(input),
     calculateReliability(input.graph, input.findings),
     calculateCompatibility(input.graph, input.findings),
-    calculateQuality(input.packages),
+    calculateQuality(input),
   ];
   const weights = { ...defaultCategoryWeights, ...input.categoryWeights };
   const configuredWeight = scoreCategories.reduce(
@@ -89,13 +92,143 @@ export function calculateProjectScores(input: CalculateProjectScoresInput): Proj
 
   return {
     status: roundedOverall === undefined ? 'insufficient-data' : 'available',
-    modelVersion: '1.0.0',
+    modelVersion: '1.1.0',
     ...(roundedOverall === undefined ? {} : { overall: roundedOverall }),
     ...(label === undefined ? {} : { label }),
     confidence: roundUnit(confidence),
     coverage: roundUnit(coverage),
     categories,
   };
+}
+
+function calculateMaintenance(input: CalculateProjectScoresInput): CategoryScore {
+  const npm = input.npm;
+  if (input.packages.length === 0) return unavailableCategory('maintenance', 'not-applicable');
+  if (npm === undefined || npm.eligibleCoordinateCount === 0)
+    return unavailableCategory('maintenance');
+  const available = npm.packages.filter((item) => item.status === 'available');
+  if (available.length === 0) return insufficientCategory('maintenance', 0, 0, []);
+  const rate = available.length / npm.eligibleCoordinateCount;
+  const deprecatedCount = available.filter((item) => item.deprecated !== undefined).length;
+  const contributions: ScoreContribution[] = [
+    {
+      ruleId: 'score/npm-deprecation',
+      category: 'maintenance',
+      value: roundScore(100 - (deprecatedCount / available.length) * 80),
+      weight: 0.3,
+      confidence: 1,
+      evidenceIds: evidenceIdsForRule(input.findings, 'maintenance/npm-deprecated'),
+      explanation: `${deprecatedCount} of ${available.length} evaluated exact releases are marked deprecated by the npm Registry.`,
+    },
+  ];
+  const dated = available.filter((item) => item.publishedAt !== undefined);
+  if (dated.length > 0) {
+    const now = input.now ?? new Date();
+    contributions.push({
+      ruleId: 'score/release-recency',
+      category: 'maintenance',
+      value: roundScore(mean(dated.map((item) => releaseRecency(item.publishedAt ?? '', now)))),
+      weight: 0.25,
+      confidence: 0.9,
+      evidenceIds: [],
+      explanation: `${dated.length} exact release publication date${dated.length === 1 ? '' : 's'} were evaluated with gradual age bands.`,
+    });
+  }
+  const maintained = available.filter((item) => item.maintainerCount !== undefined);
+  if (maintained.length > 0) {
+    contributions.push({
+      ruleId: 'score/maintainer-redundancy',
+      category: 'maintenance',
+      value: roundScore(
+        mean(
+          maintained.map((item) =>
+            item.maintainerCount === 0 ? 30 : item.maintainerCount === 1 ? 70 : 100,
+          ),
+        ),
+      ),
+      weight: 0.1,
+      confidence: 0.8,
+      evidenceIds: [],
+      explanation: `${maintained.length} exact releases have publisher-maintainer coverage; single-maintainer packages receive a bounded bus-factor penalty.`,
+    });
+  }
+  return categoryFromContributions(
+    'maintenance',
+    contributions,
+    rate,
+    new Set(['score/npm-deprecation', 'score/release-recency', 'score/maintainer-redundancy']),
+  );
+}
+
+function calculateSupplyChain(input: CalculateProjectScoresInput): CategoryScore {
+  if (input.packages.length === 0) return unavailableCategory('supply-chain', 'not-applicable');
+  const contributions: ScoreContribution[] = [];
+  const exact = input.packages.filter((item) => item.version !== undefined);
+  const integrity = exact.filter((item) => item.integrity !== undefined);
+  if (integrity.length > 0) {
+    const missing = integrity.filter((item) => item.integrity === 'missing').length;
+    contributions.push({
+      ruleId: 'score/lockfile-integrity',
+      category: 'supply-chain',
+      value: roundScore(100 - (missing / integrity.length) * 45),
+      weight: 0.3,
+      confidence: 1,
+      evidenceIds: [],
+      explanation: `${integrity.length - missing} of ${integrity.length} resolved lockfile records include package integrity metadata.`,
+    });
+  }
+  const npm = input.npm;
+  const available = npm?.packages.filter((item) => item.status === 'available') ?? [];
+  const rate =
+    npm === undefined || npm.eligibleCoordinateCount === 0
+      ? 0
+      : available.length / npm.eligibleCoordinateCount;
+  if (available.length > 0) {
+    const scripted = available.filter((item) =>
+      (item.lifecycleScripts ?? []).some((script) =>
+        ['preinstall', 'install', 'postinstall'].includes(script),
+      ),
+    );
+    const scriptScores = available.map((item) => {
+      const scripts = item.lifecycleScripts ?? [];
+      if (!scripts.some((script) => ['preinstall', 'install', 'postinstall'].includes(script)))
+        return 100;
+      const related = input.packages.filter(
+        (candidate) => candidate.name === item.name && candidate.version === item.version,
+      );
+      return related.some(
+        (candidate) => candidate.direct && candidate.directScopes.includes('runtime'),
+      )
+        ? 65
+        : 80;
+    });
+    contributions.push(
+      {
+        ruleId: 'score/install-scripts',
+        category: 'supply-chain',
+        value: roundScore(mean(scriptScores)),
+        weight: 0.5,
+        confidence: 0.9,
+        evidenceIds: evidenceIdsForRule(input.findings, 'supply-chain/install-script'),
+        explanation: `${scripted.length} of ${available.length} evaluated releases declare lifecycle scripts; install hooks are weighted by dependency impact.`,
+      },
+      {
+        ruleId: 'score/registry-resolution',
+        category: 'supply-chain',
+        value: 100,
+        weight: 0.2,
+        confidence: 1,
+        evidenceIds: [],
+        explanation: `${available.length} exact package coordinates were resolved by the npm Registry provider.`,
+      },
+    );
+  }
+  return categoryFromContributions(
+    'supply-chain',
+    contributions,
+    rate,
+    new Set(['score/install-scripts', 'score/registry-resolution']),
+  );
 }
 
 function calculateSecurity(input: CalculateProjectScoresInput): CategoryScore {
@@ -207,7 +340,8 @@ function calculateCompatibility(
   );
 }
 
-function calculateQuality(packages: readonly PackageReport[]): CategoryScore {
+function calculateQuality(input: CalculateProjectScoresInput): CategoryScore {
+  const packages = input.packages;
   if (packages.length === 0) return unavailableCategory('quality', 'not-applicable');
   const prereleaseCount = packages.filter(
     (item) => item.version !== undefined && item.version.includes('-'),
@@ -215,16 +349,94 @@ function calculateQuality(packages: readonly PackageReport[]): CategoryScore {
   const exactCount = packages.filter((item) => item.version !== undefined).length;
   if (exactCount === 0) return unavailableCategory('quality');
   const value = 100 - (prereleaseCount / exactCount) * 20;
-  const contribution: ScoreContribution = {
-    ruleId: 'score/release-stability',
-    category: 'quality',
-    value: roundScore(value),
-    weight: 0.25,
-    confidence: 0.9,
-    evidenceIds: [],
-    explanation: `${prereleaseCount} of ${exactCount} exact resolved versions are prereleases; package metadata quality signals are not yet available.`,
+  const contributions: ScoreContribution[] = [
+    {
+      ruleId: 'score/release-stability',
+      category: 'quality',
+      value: roundScore(value),
+      weight: 0.3,
+      confidence: 0.9,
+      evidenceIds: [],
+      explanation: `${prereleaseCount} of ${exactCount} exact resolved versions are prereleases.`,
+    },
+  ];
+  const npm = input.npm;
+  const available = npm?.packages.filter((item) => item.status === 'available') ?? [];
+  const rate =
+    npm === undefined || npm.eligibleCoordinateCount === 0
+      ? 0
+      : available.length / npm.eligibleCoordinateCount;
+  if (available.length > 0) {
+    const licensed = available.filter((item) => item.license !== undefined).length;
+    const repositories = available.filter((item) => item.repository !== undefined).length;
+    contributions.push(
+      {
+        ruleId: 'score/license-metadata',
+        category: 'quality',
+        value: roundScore(60 + (licensed / available.length) * 40),
+        weight: 0.35,
+        confidence: 0.9,
+        evidenceIds: [],
+        explanation: `${licensed} of ${available.length} evaluated releases expose license metadata.`,
+      },
+      {
+        ruleId: 'score/repository-metadata',
+        category: 'quality',
+        value: roundScore(65 + (repositories / available.length) * 35),
+        weight: 0.35,
+        confidence: 0.85,
+        evidenceIds: [],
+        explanation: `${repositories} of ${available.length} evaluated releases expose a source repository.`,
+      },
+    );
+  }
+  return categoryFromContributions(
+    'quality',
+    contributions,
+    rate,
+    new Set(['score/license-metadata', 'score/repository-metadata']),
+  );
+}
+
+function categoryFromContributions(
+  category: ScoreCategory,
+  contributions: readonly ScoreContribution[],
+  remoteRate = 1,
+  remoteRules: ReadonlySet<string> = new Set(),
+): CategoryScore {
+  const effective = contributions.map((contribution) => ({
+    contribution,
+    availability: remoteRules.has(contribution.ruleId) ? remoteRate : 1,
+  }));
+  const coverage = effective.reduce(
+    (sum, item) => sum + item.contribution.weight * item.availability,
+    0,
+  );
+  const confidence = effective.reduce(
+    (sum, item) =>
+      sum + item.contribution.weight * item.contribution.confidence * item.availability,
+    0,
+  );
+  const denominator = effective.reduce(
+    (sum, item) => sum + item.contribution.weight * item.contribution.confidence,
+    0,
+  );
+  if (denominator === 0) return insufficientCategory(category, coverage, confidence, contributions);
+  const score =
+    effective.reduce(
+      (sum, item) =>
+        sum + item.contribution.value * item.contribution.weight * item.contribution.confidence,
+      0,
+    ) / denominator;
+  if (coverage < 0.35) return insufficientCategory(category, coverage, confidence, contributions);
+  return {
+    category,
+    status: 'available',
+    score: roundScore(score),
+    confidence: roundUnit(confidence),
+    coverage: roundUnit(coverage),
+    contributions,
   };
-  return insufficientCategory('quality', 0.25, 0.23, [contribution]);
 }
 
 function categoryFromContribution(
@@ -274,6 +486,22 @@ function severityScore(severity: string): number {
   if (severity === 'medium') return 65;
   if (severity === 'low') return 85;
   return 70;
+}
+
+function releaseRecency(publishedAt: string, now: Date): number {
+  const timestamp = Date.parse(publishedAt);
+  if (!Number.isFinite(timestamp)) return 50;
+  const months = Math.max(0, (now.getTime() - timestamp) / (30.4375 * 24 * 60 * 60 * 1000));
+  if (months <= 12) return 100;
+  if (months <= 18) return interpolate(months, 12, 18, 100, 90);
+  if (months <= 24) return interpolate(months, 18, 24, 90, 75);
+  if (months <= 36) return interpolate(months, 24, 36, 75, 50);
+  if (months <= 60) return interpolate(months, 36, 60, 50, 25);
+  return 20;
+}
+
+function interpolate(value: number, start: number, end: number, from: number, to: number): number {
+  return from + ((value - start) / (end - start)) * (to - from);
 }
 
 function evidenceIdsForRule(findings: readonly Finding[], ruleId: string): string[] {

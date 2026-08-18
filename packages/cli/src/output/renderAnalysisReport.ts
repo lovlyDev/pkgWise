@@ -31,6 +31,7 @@ export function renderAnalysisReport(
     `Analysis status: ${report.status}`,
     ...renderScoreLines(report),
     `Security: OSV ${report.enrichment.osv.status} · ${report.enrichment.osv.evaluatedCoordinateCount}/${report.enrichment.osv.eligibleCoordinateCount} coordinates · ${report.advisories.length} advisories${report.coverage.security === undefined ? '' : ` · ${Math.round(report.coverage.security * 100)}% coverage`}`,
+    `Metadata: npm Registry ${report.enrichment.npm.status} · ${report.enrichment.npm.evaluatedCoordinateCount}/${report.enrichment.npm.eligibleCoordinateCount} coordinates`,
     `Configuration: ${report.configuration.source}${report.configuration.relativePath === undefined ? '' : ` (${report.configuration.relativePath})`} · ${report.configuration.enabledRules.length} rules`,
     `Policy: ${report.policy.status}${report.policy.configured ? ` · ${report.policy.violations.length} violations` : ' · not configured'}`,
   ];

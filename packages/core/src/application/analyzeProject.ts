@@ -13,7 +13,9 @@ import type { AnalyzeProjectInput } from '../public/ClientInputs.js';
 import type { AnalysisReport, Finding, PackageReport } from '../public/ClientResults.js';
 import { defaultLocalRuleIds, localRuleIds, runLocalRules } from '../rules/runLocalRules.js';
 import { fetchProjectOsv } from '../providers/osv/fetchProjectOsv.js';
+import { fetchProjectNpm, type ProjectNpmResult } from '../providers/npm/fetchProjectNpm.js';
 import { compareFindings, createSecurityFindings } from '../rules/createSecurityFindings.js';
+import { createRegistryFindings } from '../rules/createRegistryFindings.js';
 import { calculateProjectScores } from '../scoring/calculateProjectScores.js';
 import type { ProjectOsvResult } from '../providers/osv/fetchProjectOsv.js';
 
@@ -76,17 +78,32 @@ export async function analyzeProject(
   const coordinates = packages.flatMap((item) =>
     item.version === undefined ? [] : [{ name: item.name, version: item.version }],
   );
-  const osv =
+  const analysisTime = context.now();
+  emitProgress(input, 'phase-started', 'providers');
+  const [osv, npm] =
     input.remote === true
-      ? await enrichWithOsv(input, context, coordinates)
-      : {
-          status: 'not-requested' as const,
-          coordinates: [],
-          advisories: [],
-          eligibleCoordinateCount: 0,
-          evaluatedCoordinateCount: 0,
-          unavailableCoordinateCount: 0,
-        };
+      ? await Promise.all([
+          enrichWithOsv(input, context, coordinates),
+          enrichWithNpm(input, context, coordinates),
+        ])
+      : [
+          {
+            status: 'not-requested' as const,
+            coordinates: [],
+            advisories: [],
+            eligibleCoordinateCount: 0,
+            evaluatedCoordinateCount: 0,
+            unavailableCoordinateCount: 0,
+          },
+          {
+            status: 'not-requested' as const,
+            packages: [],
+            eligibleCoordinateCount: 0,
+            evaluatedCoordinateCount: 0,
+            unavailableCoordinateCount: 0,
+          },
+        ];
+  emitProgress(input, 'phase-completed', 'providers');
   const securityFindings: Finding[] = osv.coordinates.flatMap(({ name, version, result }) =>
     createSecurityFindings(
       name,
@@ -95,7 +112,10 @@ export async function analyzeProject(
       result.advisories,
     ),
   );
-  const findings = [...localFindings, ...securityFindings].sort(compareFindings);
+  const registryFindings = createRegistryFindings(npm.packages, packages);
+  const findings = [...localFindings, ...securityFindings, ...registryFindings].sort(
+    compareFindings,
+  );
   const securityCoverage =
     input.remote === true
       ? osv.eligibleCoordinateCount === 0
@@ -107,6 +127,8 @@ export async function analyzeProject(
     packages,
     findings,
     ...(input.remote === true ? { osv: osv as ProjectOsvResult } : {}),
+    ...(input.remote === true ? { npm: npm as ProjectNpmResult } : {}),
+    now: analysisTime,
     ...(loadedConfig.config.scoring?.categoryWeights === undefined
       ? {}
       : { categoryWeights: loadedConfig.config.scoring.categoryWeights }),
@@ -126,7 +148,7 @@ export async function analyzeProject(
   return {
     schemaVersion: '1',
     status: 'partial',
-    generatedAt: context.now().toISOString(),
+    generatedAt: analysisTime.toISOString(),
     tool: { name: 'pkgwise', version: context.toolVersion },
     project: {
       ...(manifest.name === undefined ? {} : { name: manifest.name }),
@@ -165,6 +187,7 @@ export async function analyzeProject(
     scores,
     coverage,
     advisories: osv.advisories,
+    packageMetadata: npm.packages,
     enrichment: {
       requested: input.remote === true,
       osv: {
@@ -172,6 +195,12 @@ export async function analyzeProject(
         eligibleCoordinateCount: osv.eligibleCoordinateCount,
         evaluatedCoordinateCount: osv.evaluatedCoordinateCount,
         unavailableCoordinateCount: osv.unavailableCoordinateCount,
+      },
+      npm: {
+        status: npm.status,
+        eligibleCoordinateCount: npm.eligibleCoordinateCount,
+        evaluatedCoordinateCount: npm.evaluatedCoordinateCount,
+        unavailableCoordinateCount: npm.unavailableCoordinateCount,
       },
     },
     policy,
@@ -224,6 +253,18 @@ export async function analyzeProject(
             },
           ]
         : []),
+      ...(input.remote === true && npm.status !== 'available'
+        ? [
+            {
+              code: 'PW_NPM_PROJECT_ENRICHMENT_INCOMPLETE',
+              level: 'warning' as const,
+              message:
+                npm.status === 'offline'
+                  ? 'npm Registry project data is not fully cached and offline mode forbids requests.'
+                  : `npm Registry evaluated ${npm.evaluatedCoordinateCount} of ${npm.eligibleCoordinateCount} exact package coordinates.`,
+            },
+          ]
+        : []),
     ],
   };
 }
@@ -233,7 +274,6 @@ async function enrichWithOsv(
   context: AnalyzeProjectContext,
   coordinates: readonly { readonly name: string; readonly version: string }[],
 ) {
-  emitProgress(input, 'phase-started', 'providers');
   const result = await fetchProjectOsv(
     coordinates,
     {
@@ -252,8 +292,32 @@ async function enrichWithOsv(
       ...(context.random === undefined ? {} : { random: context.random }),
     },
   );
-  emitProgress(input, 'phase-completed', 'providers');
   return result;
+}
+
+async function enrichWithNpm(
+  input: AnalyzeProjectInput,
+  context: AnalyzeProjectContext,
+  coordinates: readonly { readonly name: string; readonly version: string }[],
+) {
+  return fetchProjectNpm(
+    coordinates,
+    {
+      offline: input.offline ?? false,
+      refresh: input.refresh ?? false,
+      cache: input.cache ?? true,
+      ...(input.cacheDirectory === undefined ? {} : { cacheDirectory: input.cacheDirectory }),
+      timeoutMs: input.timeoutMs ?? 10_000,
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+      concurrency: input.concurrency ?? 2,
+    },
+    {
+      fetch: context.fetch,
+      now: context.now,
+      ...(context.sleep === undefined ? {} : { sleep: context.sleep }),
+      ...(context.random === undefined ? {} : { random: context.random }),
+    },
+  );
 }
 
 function resolveConfiguredRules(

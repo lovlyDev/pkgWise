@@ -95,9 +95,16 @@ const report: AnalysisReport = {
   },
   coverage: { overall: 0 },
   advisories: [],
+  packageMetadata: [],
   enrichment: {
     requested: false,
     osv: {
+      status: 'not-requested',
+      eligibleCoordinateCount: 0,
+      evaluatedCoordinateCount: 0,
+      unavailableCoordinateCount: 0,
+    },
+    npm: {
       status: 'not-requested',
       eligibleCoordinateCount: 0,
       evaluatedCoordinateCount: 0,
@@ -120,6 +127,7 @@ describe('analysis reporters', () => {
     const markdown = renderMarkdownReport(report);
 
     assert.match(markdown, /^# PkgWise dependency report/);
+    assert.match(markdown, /npm Registry status/);
     assert.doesNotMatch(markdown, /<script>/);
     assert.match(markdown, /unsafe&lt;script&gt;\\\|&#96;project&#96;/);
     assert.match(markdown, /Unsafe &lt;title&gt; \\| &#96;code&#96;/);
