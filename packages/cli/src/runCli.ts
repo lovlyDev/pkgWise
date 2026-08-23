@@ -26,7 +26,7 @@ export async function runCli(
     client,
     io,
     signal,
-    version: options.version ?? '0.1.0-alpha.2',
+    version: options.version ?? '0.1.0-alpha.3',
     setExitCode(code) {
       exitCode = code;
     },

@@ -19,6 +19,9 @@ from a GitHub prerelease through OIDC Trusted Publishing.
 The `0.1.0-alpha.2` release adds project-wide npm Registry intelligence, maintenance and supply-chain
 findings, and numeric evidence-backed results across all six scoring categories during remote scans.
 
+The `0.1.0-alpha.3` release adds npm and pnpm workspace selection by package name or path, combined
+importer analysis, workspace metadata in every report format, and a modular scoring implementation.
+
 ## Local release verification
 
 ```bash

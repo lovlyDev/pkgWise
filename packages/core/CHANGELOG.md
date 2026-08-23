@@ -1,5 +1,13 @@
 # @lovlydev/pkgwise-core changelog
 
+## 0.1.0-alpha.3
+
+- Added safe workspace discovery from `package.json` and `pnpm-workspace.yaml`, including bounded glob
+  expansion, path containment checks, deterministic selection, and typed selector errors.
+- Added combined npm and pnpm lockfile importer analysis so graph metrics, findings, remote enrichment,
+  scoring, and policy reflect only the selected workspace roots.
+- Split the scoring implementation into focused category modules without changing the public model.
+
 ## 0.1.0-alpha.2
 
 - Added project-wide npm Registry enrichment with exact-coordinate deduplication, package-document cache
