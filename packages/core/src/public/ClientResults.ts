@@ -130,6 +130,10 @@ export interface AnalysisReport {
     readonly manager: string;
     readonly lockfile?: string;
     readonly mode: 'locked' | 'manifest-only';
+    readonly workspaces: {
+      readonly availableCount: number;
+      readonly selected: readonly { readonly name?: string; readonly path: string }[];
+    };
   };
   readonly graph: {
     readonly packageCount: number;

@@ -43,6 +43,10 @@ export function renderSarifReport(report: AnalysisReport): string {
                   ? 0
                   : report.enrichment.npm.evaluatedCoordinateCount /
                     report.enrichment.npm.eligibleCoordinateCount,
+              availableWorkspaceCount: report.project.workspaces.availableCount,
+              selectedWorkspaces: report.project.workspaces.selected.map(
+                (workspace) => workspace.name ?? workspace.path,
+              ),
             },
           },
         ],

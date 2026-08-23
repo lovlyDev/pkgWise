@@ -8,7 +8,10 @@ import type {
 } from './LockfileGraphSnapshot.js';
 import { isRecord, lockfileParseError } from './lockfileUtilities.js';
 
-export function parsePnpmLockfile(text: string): LockfileGraphSnapshot {
+export function parsePnpmLockfile(
+  text: string,
+  importerIds: readonly string[] = ['.'],
+): LockfileGraphSnapshot {
   let value: unknown;
   try {
     value = parse(text, { maxAliasCount: 50, strict: true });
@@ -63,6 +66,16 @@ export function parsePnpmLockfile(text: string): LockfileGraphSnapshot {
   if (!isRecord(importers) || !isRecord(importers['.'])) {
     throw lockfileParseError('pnpm-lock.yaml importers must contain the root importer ".".');
   }
+  const selectedImporters = [...new Set(importerIds)].sort();
+  const importerDependencies = selectedImporters.flatMap((importerId) => {
+    const importer = importers[importerId];
+    if (!isRecord(importer)) {
+      throw lockfileParseError(
+        `pnpm-lock.yaml does not contain selected workspace importer ${JSON.stringify(importerId)}.`,
+      );
+    }
+    return readPnpmImporter(importer, identities);
+  });
 
   return {
     manager: 'pnpm',
@@ -70,10 +83,27 @@ export function parsePnpmLockfile(text: string): LockfileGraphSnapshot {
     fidelity: 'full',
     packages,
     importer: {
-      id: '.',
-      dependencies: readPnpmImporter(importers['.'], identities),
+      id: selectedImporters.join(','),
+      dependencies: deduplicateReferences(importerDependencies),
     },
   };
+}
+
+function deduplicateReferences(
+  references: readonly LockfileDependencyReference[],
+): LockfileDependencyReference[] {
+  return [
+    ...new Map(
+      references.map((reference) => [
+        `${reference.name}\0${reference.scope}\0${reference.targetId ?? ''}\0${reference.requested}`,
+        reference,
+      ]),
+    ).values(),
+  ].sort((left, right) =>
+    `${left.name}\0${left.scope}\0${left.targetId ?? ''}`.localeCompare(
+      `${right.name}\0${right.scope}\0${right.targetId ?? ''}`,
+    ),
+  );
 }
 
 function readPnpmImporter(

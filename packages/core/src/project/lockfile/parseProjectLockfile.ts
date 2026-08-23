@@ -7,11 +7,14 @@ import { parsePnpmLockfile } from './parsePnpmLockfile.js';
 export async function parseProjectLockfile(
   projectRoot: string,
   manager: PackageManagerDetection,
+  importerIds: readonly string[] = ['.'],
   signal?: AbortSignal,
 ): Promise<LockfileGraphSnapshot | undefined> {
   if (manager.lockfile === undefined || (manager.name !== 'npm' && manager.name !== 'pnpm')) {
     return undefined;
   }
   const text = await loadLockfileText(projectRoot, manager.lockfile, signal);
-  return manager.name === 'npm' ? parseNpmLockfile(text) : parsePnpmLockfile(text);
+  return manager.name === 'npm'
+    ? parseNpmLockfile(text, importerIds)
+    : parsePnpmLockfile(text, importerIds);
 }

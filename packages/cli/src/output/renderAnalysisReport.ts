@@ -22,6 +22,7 @@ export function renderAnalysisReport(
     `${report.project.name ?? report.project.rootName}${
       report.project.version === undefined ? '' : `@${report.project.version}`
     }`,
+    `Workspaces: ${report.project.workspaces.availableCount} available · ${report.project.workspaces.selected.length === 0 ? 'root selected' : `${report.project.workspaces.selected.length} selected (${report.project.workspaces.selected.map((workspace) => workspace.name ?? workspace.path).join(', ')})`}`,
     `Direct dependencies: ${report.graph.directDependencyCount}`,
     `Resolved packages: ${report.graph.packageCount} (${report.graph.transitiveDependencyCount} transitive)`,
     `Graph: ${report.graph.edgeCount} edges · depth ${report.graph.maximumDepth} · unresolved ${report.graph.unresolvedDependencyCount}`,

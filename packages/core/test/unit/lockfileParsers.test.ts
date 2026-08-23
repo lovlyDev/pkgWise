@@ -110,4 +110,43 @@ snapshots:
     const consumer = graph.packages.find((item) => item.name === 'consumer');
     assert.equal(consumer?.version, '1.0.0(peer@2.0.0)');
   });
+
+  it('combines only selected pnpm workspace importers', () => {
+    const graph = parsePnpmLockfile(
+      `
+lockfileVersion: '9.0'
+importers:
+  .: {}
+  packages/a:
+    dependencies:
+      a-dep:
+        specifier: 1.0.0
+        version: 1.0.0
+  packages/b:
+    dependencies:
+      b-dep:
+        specifier: 1.0.0
+        version: 1.0.0
+packages:
+  a-dep@1.0.0: {}
+  b-dep@1.0.0: {}
+snapshots:
+  a-dep@1.0.0: {}
+  b-dep@1.0.0: {}
+`,
+      ['packages/b'],
+    );
+
+    assert.equal(graph.importer.id, 'packages/b');
+    assert.deepEqual(
+      graph.importer.dependencies.map((item) => item.name),
+      ['b-dep'],
+    );
+    assert.deepEqual(summarizeDependencyGraph(graph), {
+      packageCount: 1,
+      edgeCount: 1,
+      unresolvedDependencyCount: 0,
+      maximumDepth: 1,
+    });
+  });
 });

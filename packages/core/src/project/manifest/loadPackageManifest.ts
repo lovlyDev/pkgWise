@@ -52,12 +52,31 @@ function normalizeManifest(value: unknown): PackageManifestSnapshot {
     ...(typeof value.name === 'string' ? { name: value.name } : {}),
     ...(typeof value.version === 'string' ? { version: value.version } : {}),
     ...(typeof value.packageManager === 'string' ? { packageManager: value.packageManager } : {}),
+    workspaces: readWorkspaces(value.workspaces),
     ...(value.pkgwise === undefined ? {} : { pkgwise: value.pkgwise }),
     dependencies: readDependencyMap(value.dependencies, 'dependencies'),
     devDependencies: readDependencyMap(value.devDependencies, 'devDependencies'),
     peerDependencies: readDependencyMap(value.peerDependencies, 'peerDependencies'),
     optionalDependencies: readDependencyMap(value.optionalDependencies, 'optionalDependencies'),
   };
+}
+
+function readWorkspaces(value: unknown): string[] {
+  if (value === undefined) return [];
+  const patterns = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.packages)
+      ? value.packages
+      : undefined;
+  if (patterns === undefined || patterns.some((pattern) => typeof pattern !== 'string')) {
+    throw new PkgWiseError({
+      code: 'PW_MANIFEST_PARSE_FAILED',
+      userMessage:
+        'package.json workspaces must be a string array or an object with a packages string array.',
+      recoverable: false,
+    });
+  }
+  return [...new Set(patterns as string[])].sort();
 }
 
 function readDependencyMap(value: unknown, field: string): Readonly<Record<string, string>> {

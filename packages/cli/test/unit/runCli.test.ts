@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { describe, it } from 'node:test';
 import { join, resolve } from 'node:path';
@@ -95,6 +95,41 @@ describe('runCli', () => {
     assert.ok(report.graph.packageCount >= report.graph.directDependencyCount);
     assert.equal(report.graph.lockfileVersion, '9.0');
     assert.equal(report.diagnostics[0]?.code, 'PW_ANALYSIS_GRAPH_AND_SCORING_READY');
+  });
+
+  it('passes workspace selection through CLI into the core graph roots', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'pkgwise-cli-workspace-'));
+    try {
+      await mkdir(join(root, 'packages', 'selected'), { recursive: true });
+      await writeFile(
+        join(root, 'package.json'),
+        JSON.stringify({ name: 'cli-workspace-root', workspaces: ['packages/*'] }),
+      );
+      await writeFile(
+        join(root, 'packages', 'selected', 'package.json'),
+        JSON.stringify({ name: '@fixture/selected', dependencies: { chosen: '1.0.0' } }),
+      );
+      const io = createMemoryIo();
+
+      const exitCode = await runCli(
+        ['--format', 'json', 'scan', root, '--workspace', '@fixture/selected'],
+        { io },
+      );
+      const report = JSON.parse(io.readStdout()) as {
+        project: { workspaces: { availableCount: number; selected: Array<{ name: string }> } };
+        packages: Array<{ name: string }>;
+      };
+
+      assert.equal(exitCode, 0);
+      assert.equal(report.project.workspaces.availableCount, 1);
+      assert.equal(report.project.workspaces.selected[0]?.name, '@fixture/selected');
+      assert.deepEqual(
+        report.packages.map((item) => item.name),
+        ['chosen'],
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('rejects invalid concurrency with a CLI exit code', async () => {

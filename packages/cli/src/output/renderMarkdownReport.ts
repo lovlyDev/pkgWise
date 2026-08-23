@@ -18,6 +18,7 @@ export function renderMarkdownReport(report: AnalysisReport): string {
     `| Analysis status | ${escapeMarkdown(report.status)} |`,
     `| Configuration | ${escapeMarkdown(report.configuration.source)} |`,
     `| Policy | ${escapeMarkdown(report.policy.status)} |`,
+    `| Workspaces | ${report.project.workspaces.availableCount} available; ${report.project.workspaces.selected.length === 0 ? 'root selected' : `${report.project.workspaces.selected.length} selected: ${escapeMarkdown(report.project.workspaces.selected.map((workspace) => workspace.name ?? workspace.path).join(', '))}`} |`,
     '',
     '## Dependency graph',
     '',

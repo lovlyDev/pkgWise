@@ -26,7 +26,12 @@ const report: AnalysisReport = {
   status: 'partial',
   generatedAt: '2026-08-15T00:00:00.000Z',
   tool: { name: 'pkgwise', version: 'test' },
-  project: { rootName: 'fixture', manager: 'npm', mode: 'locked' },
+  project: {
+    rootName: 'fixture',
+    manager: 'npm',
+    mode: 'locked',
+    workspaces: { availableCount: 0, selected: [] },
+  },
   graph: {
     packageCount: 0,
     directDependencyCount: 0,

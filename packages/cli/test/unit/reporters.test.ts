@@ -17,6 +17,7 @@ const report: AnalysisReport = {
     manager: 'npm',
     lockfile: 'package-lock.json',
     mode: 'locked',
+    workspaces: { availableCount: 0, selected: [] },
   },
   graph: {
     packageCount: 1,

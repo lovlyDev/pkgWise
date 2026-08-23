@@ -17,6 +17,8 @@ export function mapErrorToExitCode(error: unknown): number {
       return 2;
     case 'PW_PROJECT_NOT_FOUND':
     case 'PW_PROJECT_AMBIGUOUS_MANAGER':
+    case 'PW_WORKSPACE_NOT_FOUND':
+    case 'PW_WORKSPACE_SELECTOR_AMBIGUOUS':
     case 'PW_MANIFEST_PARSE_FAILED':
     case 'PW_LOCKFILE_PARSE_FAILED':
     case 'PW_LOCKFILE_VERSION_UNSUPPORTED':

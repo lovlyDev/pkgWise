@@ -4,13 +4,14 @@ import { evaluatePolicy } from '../policy/evaluatePolicy.js';
 import { detectPackageManager } from '../project/discovery/detectPackageManager.js';
 import { discoverProjectRoot } from '../project/discovery/discoverProjectRoot.js';
 import { loadPackageManifest } from '../project/manifest/loadPackageManifest.js';
-import {
-  analyzeDependencyGraph,
-  stablePackageId,
-} from '../project/lockfile/analyzeDependencyGraph.js';
+import { analyzeDependencyGraph } from '../project/lockfile/analyzeDependencyGraph.js';
 import { parseProjectLockfile } from '../project/lockfile/parseProjectLockfile.js';
 import type { AnalyzeProjectInput } from '../public/ClientInputs.js';
 import type { AnalysisReport, Finding, PackageReport } from '../public/ClientResults.js';
+import { discoverWorkspaces } from '../project/workspace/discoverWorkspaces.js';
+import { selectWorkspaces } from '../project/workspace/selectWorkspaces.js';
+import { summarizeManifestDependencies } from '../project/manifest/summarizeManifestDependencies.js';
+import { createManifestPackageReports } from '../project/manifest/createManifestPackageReports.js';
 import { defaultLocalRuleIds, localRuleIds, runLocalRules } from '../rules/runLocalRules.js';
 import { fetchProjectOsv } from '../providers/osv/fetchProjectOsv.js';
 import { fetchProjectNpm, type ProjectNpmResult } from '../providers/npm/fetchProjectNpm.js';
@@ -35,6 +36,12 @@ export async function analyzeProject(
   const root = await discoverProjectRoot(input.root, input.signal);
   const manifest = await loadPackageManifest(root, input.signal);
   const loadedConfig = await loadPkgWiseConfig(root, manifest, input.configFile, input.signal);
+  const availableWorkspaces = await discoverWorkspaces(root, manifest, input.signal);
+  const selectedWorkspaces = selectWorkspaces(availableWorkspaces, input.workspaces);
+  const selectedManifests =
+    selectedWorkspaces.length === 0
+      ? [manifest]
+      : selectedWorkspaces.map((workspace) => workspace.manifest);
   const manager = await detectPackageManager(root, manifest, input.signal);
   const includeDevelopment = input.includeDev ?? loadedConfig.config.project?.includeDev ?? true;
   const enabledRules =
@@ -44,7 +51,14 @@ export async function analyzeProject(
   emitProgress(input, 'phase-completed', 'discovery');
 
   emitProgress(input, 'phase-started', 'parsing');
-  const lockfileGraph = await parseProjectLockfile(root, manager, input.signal);
+  const lockfileGraph = await parseProjectLockfile(
+    root,
+    manager,
+    selectedWorkspaces.length === 0
+      ? ['.']
+      : selectedWorkspaces.map((workspace) => workspace.relativePath),
+    input.signal,
+  );
   emitProgress(input, 'phase-completed', 'parsing');
 
   emitProgress(input, 'phase-started', 'graph');
@@ -54,22 +68,13 @@ export async function analyzeProject(
       : analyzeDependencyGraph(lockfileGraph, includeDevelopment);
   emitProgress(input, 'phase-completed', 'graph');
 
-  const dependencyCounts = {
-    runtime: Object.keys(manifest.dependencies).length,
-    development: includeDevelopment ? Object.keys(manifest.devDependencies).length : 0,
-    peer: Object.keys(manifest.peerDependencies).length,
-    optional: Object.keys(manifest.optionalDependencies).length,
-  };
-  const directNames = new Set([
-    ...Object.keys(manifest.dependencies),
-    ...(includeDevelopment ? Object.keys(manifest.devDependencies) : []),
-    ...Object.keys(manifest.peerDependencies),
-    ...Object.keys(manifest.optionalDependencies),
-  ]);
+  const manifestDependencies = summarizeManifestDependencies(selectedManifests, includeDevelopment);
+  const dependencyCounts = manifestDependencies.counts;
+  const directNames = manifestDependencies.names;
 
   const packages =
     graphAnalysis?.packages ??
-    createManifestPackageReports(manifest, manager.name, includeDevelopment);
+    createManifestPackageReports(selectedManifests, manager.name, includeDevelopment);
 
   emitProgress(input, 'phase-started', 'rules');
   const localFindings = runLocalRules(graphAnalysis, enabledRules);
@@ -157,6 +162,13 @@ export async function analyzeProject(
       manager: manager.name,
       ...(manager.lockfile === undefined ? {} : { lockfile: manager.lockfile }),
       mode: manager.lockfile === undefined ? 'manifest-only' : 'locked',
+      workspaces: {
+        availableCount: availableWorkspaces.length,
+        selected: selectedWorkspaces.map((workspace) => ({
+          ...(workspace.name === undefined ? {} : { name: workspace.name }),
+          path: workspace.relativePath,
+        })),
+      },
     },
     graph: {
       packageCount: graphAnalysis?.summary.packageCount ?? directNames.size,
@@ -237,8 +249,8 @@ export async function analyzeProject(
               level: 'warning' as const,
               message:
                 input.remote === true
-                  ? `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages and calculated evidence-backed scores with OSV security data.`
-                  : `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages and calculated local reliability and compatibility scores; remote security enrichment is opt-in.`,
+                  ? `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages${selectedWorkspaces.length === 0 ? '' : ` for ${selectedWorkspaces.length} selected workspace${selectedWorkspaces.length === 1 ? '' : 's'}`} and calculated evidence-backed scores with remote provider data.`
+                  : `Resolved ${graphAnalysis?.summary.packageCount ?? 0} lockfile packages${selectedWorkspaces.length === 0 ? '' : ` for ${selectedWorkspaces.length} selected workspace${selectedWorkspaces.length === 1 ? '' : 's'}`} and calculated local reliability and compatibility scores; remote enrichment is opt-in.`,
             },
           ]),
       ...(input.remote === true && osv.status !== 'available'
@@ -332,42 +344,6 @@ function resolveConfiguredRules(
     }
   }
   return [...enabled].sort();
-}
-
-function createManifestPackageReports(
-  manifest: Awaited<ReturnType<typeof loadPackageManifest>>,
-  manager: string,
-  includeDevelopment: boolean,
-): PackageReport[] {
-  const names = new Set([
-    ...Object.keys(manifest.dependencies),
-    ...(includeDevelopment ? Object.keys(manifest.devDependencies) : []),
-    ...Object.keys(manifest.peerDependencies),
-    ...Object.keys(manifest.optionalDependencies),
-  ]);
-  const optionalNames = new Set(Object.keys(manifest.optionalDependencies));
-
-  return [...names].sort().map((name) => {
-    const scopes: PackageReport['directScopes'][number][] = [];
-    if (name in manifest.dependencies && !optionalNames.has(name)) scopes.push('runtime');
-    if (includeDevelopment && name in manifest.devDependencies) scopes.push('development');
-    if (name in manifest.peerDependencies) scopes.push('peer');
-    if (optionalNames.has(name)) scopes.push('optional');
-    return {
-      id: stablePackageId(manager, `manifest:${name}`),
-      name,
-      direct: true,
-      directScopes: scopes,
-      minimumDepth: 1,
-      dependencyPaths: [
-        {
-          packages: [{ id: stablePackageId(manager, `manifest:${name}`), name }],
-        },
-      ],
-      pathsTruncated: false,
-      resolvedDependencyCount: 0,
-    };
-  });
 }
 
 function emitProgress(

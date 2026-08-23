@@ -18,7 +18,12 @@ export function createScanCommand(context: CommandContext): Command {
   return new Command('scan')
     .description('analyze a project dependency graph')
     .argument('[path]', 'project path', '.')
-    .option('--workspace <name>', 'include a workspace (repeatable)', collect, [])
+    .option(
+      '--workspace <name-or-path>',
+      'analyze a workspace; use * for all (repeatable)',
+      collect,
+      [],
+    )
     .addOption(
       new Option('--include-dev', 'include development dependencies').conflicts('production'),
     )
@@ -31,7 +36,7 @@ export function createScanCommand(context: CommandContext): Command {
       ),
     )
     .option('--rule <id>', 'run only a rule (repeatable)', collect, [])
-    .option('--remote', 'query OSV for every exact lockfile package coordinate', false)
+    .option('--remote', 'query OSV and npm Registry for exact lockfile coordinates', false)
     .option(
       '--include <group>',
       'include a finding group (repeatable)',

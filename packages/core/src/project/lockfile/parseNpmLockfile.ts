@@ -12,7 +12,10 @@ interface NpmPackageEntry extends Record<string, unknown> {
   readonly version?: string;
 }
 
-export function parseNpmLockfile(text: string): LockfileGraphSnapshot {
+export function parseNpmLockfile(
+  text: string,
+  importerIds: readonly string[] = ['.'],
+): LockfileGraphSnapshot {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -47,8 +50,7 @@ export function parseNpmLockfile(text: string): LockfileGraphSnapshot {
     entries.set(normalizeLocation(location), entry);
   }
 
-  const root = entries.get('');
-  if (root === undefined) {
+  if (!entries.has('')) {
     throw lockfileParseError('package-lock.json packages must contain the root entry "".');
   }
 
@@ -70,16 +72,27 @@ export function parseNpmLockfile(text: string): LockfileGraphSnapshot {
     });
   }
 
+  const selectedImporters = [...new Set(importerIds.map(normalizeImporterId))].sort();
+  const importerDependencies = selectedImporters.flatMap((importerId) => {
+    const importer = entries.get(importerId);
+    if (importer === undefined) {
+      throw lockfileParseError(
+        `package-lock.json does not contain selected workspace importer ${JSON.stringify(importerId)}.`,
+      );
+    }
+    return readNpmImporterDependencies(importer, (name) =>
+      resolveNpmLocation(importerId, name, entries),
+    );
+  });
+
   return {
     manager: 'npm',
     lockfileVersion: String(lockfileVersion),
     fidelity: 'full',
     packages,
     importer: {
-      id: '.',
-      dependencies: readNpmImporterDependencies(root, (name) =>
-        resolveNpmLocation('', name, entries),
-      ),
+      id: selectedImporters.join(','),
+      dependencies: deduplicateReferences(importerDependencies),
     },
   };
 }
@@ -153,12 +166,17 @@ function deduplicateReferences(
 ): LockfileDependencyReference[] {
   const byIdentity = new Map<string, LockfileDependencyReference>();
   for (const item of references) {
-    const key = `${item.name}\0${item.scope}`;
+    const key = `${item.name}\0${item.scope}\0${item.targetId ?? ''}\0${item.requested}`;
     if (!byIdentity.has(key)) byIdentity.set(key, item);
   }
   return [...byIdentity.values()].sort((a, b) =>
     `${a.name}\0${a.scope}`.localeCompare(`${b.name}\0${b.scope}`),
   );
+}
+
+function normalizeImporterId(value: string): string {
+  const normalized = normalizeLocation(value);
+  return normalized === '.' ? '' : normalized;
 }
 
 function resolveNpmLocation(

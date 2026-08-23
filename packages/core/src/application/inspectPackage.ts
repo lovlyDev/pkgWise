@@ -161,7 +161,12 @@ function createRemoteOnlyReport(context: AnalyzeProjectContext): AnalysisReport 
     status: 'partial',
     generatedAt: context.now().toISOString(),
     tool: { name: 'pkgwise', version: context.toolVersion },
-    project: { rootName: 'remote', manager: 'npm', mode: 'manifest-only' },
+    project: {
+      rootName: 'remote',
+      manager: 'npm',
+      mode: 'manifest-only',
+      workspaces: { availableCount: 0, selected: [] },
+    },
     graph: {
       packageCount: 0,
       directDependencyCount: 0,
